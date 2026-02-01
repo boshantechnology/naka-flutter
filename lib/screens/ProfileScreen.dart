@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:naka/config/app_colors.dart';
+import 'package:naka/providers/AppearanceProvider.dart';
+import 'package:provider/provider.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -9,185 +11,202 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  bool isSettingsExpanded = false;
-  bool isSavedJobsExpanded = false;
-  bool isHistoryExpanded = false;
-  bool isUpdateProfileExpanded = false;
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.bgLight,
-      appBar: AppBar(
-        backgroundColor: AppColors.white,
-        elevation: 0,
-        centerTitle: true,
-        title: const Text(
-          'Profile',
-          style: TextStyle(color: AppColors.black, fontWeight: FontWeight.bold),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // Profile Image and Info
-            _buildProfileHeader(),
-
-            const SizedBox(height: 24),
-
-            // Applications Count Card
-            _buildCard(
-              title: 'Overview',
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildStatItem('Applications', '12'),
-                  _buildStatItem('Saved Jobs', '5'),
-                  _buildStatItem('Interviews', '3'),
-                ],
+    return Consumer<AppearanceProvider>(
+      builder: (context, appearance, _) {
+        return Scaffold(
+          backgroundColor: appearance.brightness == Brightness.dark
+              ? const Color(0xFF1E1E1E)
+              : const Color(0xFFF8F9FA),
+          appBar: AppBar(
+            backgroundColor: appearance.brightness == Brightness.dark
+                ? const Color(0xFF2A2A2A)
+                : Colors.white,
+            elevation: 0,
+            centerTitle: true,
+            title: Text(
+              'Profile',
+              style: TextStyle(
+                color: appearance.brightness == Brightness.dark
+                    ? Colors.white
+                    : AppColors.text,
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
               ),
             ),
-
-            const SizedBox(height: 16),
-
-            // Saved Jobs Card
-            _buildExpandableCard(
-              title: 'Saved Jobs',
-              icon: Icons.bookmark,
-              isExpanded: isSavedJobsExpanded,
-              onToggle: () {
-                setState(() {
-                  isSavedJobsExpanded = !isSavedJobsExpanded;
-                });
-              },
-              child: Column(
-                children: [
-                  _buildSavedJobItem('UI/UX Designer', 'TechInnovate'),
-                  _buildSavedJobItem('Product Manager', 'CreativeWorks'),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Application History Card
-            _buildExpandableCard(
-              title: 'Application History',
-              icon: Icons.history,
-              isExpanded: isHistoryExpanded,
-              onToggle: () {
-                setState(() {
-                  isHistoryExpanded = !isHistoryExpanded;
-                });
-              },
-              child: Column(
-                children: [
-                  _buildApplicationItem('Software Engineer', '2 days ago'),
-                  _buildApplicationItem('Product Manager', '1 week ago'),
-                  _buildApplicationItem('Data Scientist', '2 weeks ago'),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Update Profile Card
-            _buildExpandableCard(
-              title: 'Update Profile',
-              icon: Icons.edit,
-              isExpanded: isUpdateProfileExpanded,
-              onToggle: () {
-                setState(() {
-                  isUpdateProfileExpanded = !isUpdateProfileExpanded;
-                });
-              },
-              child: _buildUpdateProfileButton(context),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Settings Card
-            _buildExpandableCard(
-              title: 'Settings',
-              icon: Icons.settings,
-              isExpanded: isSettingsExpanded,
-              onToggle: () {
-                setState(() {
-                  isSettingsExpanded = !isSettingsExpanded;
-                });
-              },
-              child: Column(
-                children: [
-                  _buildSettingsItem(Icons.lock, 'Privacy Settings', () {
-                    // Add Privacy Settings functionality
-                  }),
-                  _buildSettingsItem(Icons.notifications, 'Notification Settings', () {
-                    // Add Notification Settings functionality
-                  }),
-                  _buildSettingsItem(Icons.logout, 'Logout', () {
-                    // Add Logout functionality
-                  }),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: SizedBox.shrink(),
-    );
-  }
-
-  Widget _buildProfileHeader() {
-    return Column(
-      children: [
-        Center(
-          child: Container(
-            width: 120,
-            height: 120,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.primary, width: 2),
-              image: const DecorationImage(
-                image: NetworkImage(
-                  'https://randomuser.me/api/portraits/women/44.jpg', // Replace with actual profile image URL
+            actions: [
+              IconButton(
+                icon: Icon(
+                  Icons.more_vert,
+                  color: appearance.brightness == Brightness.dark
+                      ? Colors.white
+                      : AppColors.text,
                 ),
-                fit: BoxFit.cover,
+                onPressed: () {},
               ),
+            ],
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _buildProfileHeader(appearance),
+                const SizedBox(height: 12),
+                _buildOverviewCard(appearance),
+                const SizedBox(height: 10),
+                _buildMenuCard(
+                  title: 'Saved Jobs',
+                  icon: Icons.bookmark,
+                  color: appearance.primaryColor,
+                  onTap: () {},
+                  appearance: appearance,
+                ),
+                const SizedBox(height: 8),
+                _buildMenuCard(
+                  title: 'Application History',
+                  icon: Icons.history,
+                  color: appearance.primaryColor,
+                  onTap: () {},
+                  appearance: appearance,
+                ),
+                const SizedBox(height: 8),
+                _buildMenuCard(
+                  title: 'Update Profile',
+                  icon: Icons.person,
+                  color: const Color(0xFFFFA500),
+                  onTap: () {
+                    Navigator.pushNamed(context, '/profile');
+                  },
+                  appearance: appearance,
+                ),
+                const SizedBox(height: 8),
+                _buildMenuCard(
+                  title: 'Settings',
+                  icon: Icons.settings,
+                  color: const Color(0xFF6C757D),
+                  onTap: () {},
+                  appearance: appearance,
+                ),
+                const SizedBox(height: 12),
+                _buildLogoutButton(appearance),
+                const SizedBox(height: 12),
+              ],
             ),
           ),
-        ),
-        const SizedBox(height: 16),
-        const Text(
-          'Ethan Carter',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 4),
-        const Text(
-          'Software Engineer',
-          style: TextStyle(fontSize: 16, color: AppColors.primary),
-        ),
-        const SizedBox(height: 4),
-        const Text(
-          'San Francisco, CA',
-          style: TextStyle(fontSize: 14, color: AppColors.grey),
-        ),
-      ],
+        );
+      },
     );
   }
 
-  Widget _buildCard({required String title, required Widget child}) {
+  Widget _buildProfileHeader(AppearanceProvider appearance) {
+    return Center(
+      child: Column(
+        children: [
+          Stack(
+            alignment: Alignment.bottomRight,
+            children: [
+              Container(
+                width: 90,
+                height: 90,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: appearance.primaryColor,
+                    width: 3,
+                  ),
+                  image: const DecorationImage(
+                    image: NetworkImage(
+                      'https://randomuser.me/api/portraits/men/32.jpg',
+                    ),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: appearance.primaryColor,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.edit,
+                  color: Colors.white,
+                  size: 16,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Ethan Carter',
+            style: appearance.getTitleStyle().copyWith(
+              color: appearance.brightness == Brightness.dark
+                  ? Colors.white
+                  : AppColors.text,
+              fontSize: 18,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Software Engineer',
+            style: appearance.getSmallStyle().copyWith(
+              color: appearance.primaryColor,
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.location_on,
+                color: appearance.brightness == Brightness.dark
+                    ? Colors.grey[500]
+                    : AppColors.grey,
+                size: 14,
+              ),
+              const SizedBox(width: 3),
+              Text(
+                'San Francisco, CA',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: appearance.brightness == Brightness.dark
+                      ? Colors.grey[400]
+                      : AppColors.grey,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOverviewCard(AppearanceProvider appearance) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: appearance.brightness == Brightness.dark
+            ? const Color(0xFF2A2A2A)
+            : Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: AppColors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 1),
           ),
         ],
       ),
@@ -195,170 +214,136 @@ class _ProfileScreenState extends State<ProfileScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            title,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            'Overview',
+            style: appearance.getSmallStyle().copyWith(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: appearance.brightness == Brightness.dark
+                  ? Colors.white
+                  : AppColors.text,
+            ),
           ),
-          const SizedBox(height: 12),
-          child,
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildStatItem('12', 'Applications', appearance),
+              _buildStatItem('5', 'Saved Jobs', appearance),
+              _buildStatItem('3', 'Interviews', appearance),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildExpandableCard({
-    required String title,
-    required IconData icon,
-    required bool isExpanded,
-    required VoidCallback onToggle,
-    required Widget child,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          ListTile(
-            leading: Icon(icon, color: AppColors.primary),
-            title: Text(
-              title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            trailing: Icon(
-              isExpanded ? Icons.expand_less : Icons.expand_more,
-              color: AppColors.primary,
-            ),
-            onTap: onToggle,
-          ),
-          if (isExpanded)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: child,
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatItem(String label, String value) {
+  Widget _buildStatItem(String value, String label, AppearanceProvider appearance) {
     return Column(
       children: [
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: AppColors.primary,
+          style: appearance.getTitleStyle().copyWith(
+            fontSize: 16,
+            color: appearance.primaryColor,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 3),
         Text(
           label,
-          style: const TextStyle(fontSize: 14, color: AppColors.grey),
+          style: TextStyle(
+            fontSize: 11,
+            color: appearance.brightness == Brightness.dark
+                ? Colors.grey[500]
+                : AppColors.grey,
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildSavedJobItem(String position, String company) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.bookmark, color: AppColors.primary),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  position,
-                  style: const TextStyle(fontWeight: FontWeight.w500),
-                ),
-                Text(
-                  company,
-                  style: const TextStyle(color: AppColors.grey, fontSize: 12),
-                ),
-              ],
-            ),
+  Widget _buildMenuCard({
+    required String title,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+    required AppearanceProvider appearance,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+        color: appearance.brightness == Brightness.dark
+            ? const Color(0xFF2A2A2A)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildApplicationItem(String position, String timeAgo) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+              color: color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.business_center, color: AppColors.primary),
+            child: Icon(icon, color: color, size: 18),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  position,
-                  style: const TextStyle(fontWeight: FontWeight.w500),
-                ),
-                Text(
-                  'Applied $timeAgo',
-                  style: const TextStyle(color: AppColors.grey, fontSize: 12),
-                ),
-              ],
+            child: Text(
+              title,
+              style: appearance.getSmallStyle().copyWith(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: appearance.brightness == Brightness.dark
+                    ? Colors.white
+                    : AppColors.text,
+              ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUpdateProfileButton(BuildContext context) {
-    return ElevatedButton.icon(
-      onPressed: () {
-        // Add Update Profile functionality
-      },
-      icon: const Icon(Icons.edit, color: AppColors.white),
-      label: const Text('Update Profile'),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.primary,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+          Icon(
+            Icons.arrow_forward_ios,
+            color: (appearance.brightness == Brightness.dark
+                ? Colors.grey[600]
+                : AppColors.grey)!
+            .withOpacity(0.5),
+            size: 14,
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildSettingsItem(IconData icon, String label, VoidCallback onTap) {
-    return ListTile(
-      leading: Icon(icon, color: AppColors.primary),
-      title: Text(label, style: const TextStyle(fontSize: 16)),
-      trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.grey),
-      onTap: onTap,
+  Widget _buildLogoutButton(AppearanceProvider appearance) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.red.shade300, width: 1.2),
+        borderRadius: BorderRadius.circular(10),
+        color: appearance.brightness == Brightness.dark
+            ? const Color(0xFF2A2A2A)
+            : Colors.white,
+      ),
+      child: Center(
+        child: Text(
+          'Logout',
+          style: appearance.getSmallStyle().copyWith(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: Colors.red,
+          ),
+        ),
+      ),
     );
   }
 }

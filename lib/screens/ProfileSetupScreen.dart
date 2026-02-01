@@ -5,6 +5,9 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:naka/config/app_colors.dart';
+import 'package:naka/screens/LocationPickerScreen.dart';
+import 'package:naka/providers/AppearanceProvider.dart';
+import 'package:provider/provider.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   const ProfileSetupScreen({super.key});
@@ -156,312 +159,502 @@ class _ProfilePageState extends State<ProfileSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.bgLight,
-      appBar: AppBar(
-        backgroundColor: AppColors.bgLight,
-        elevation: 0,
-        centerTitle: true,
-        title: const Text(
-          'Create Profile',
-          style: TextStyle(
-            color: AppColors.black,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
+    return Consumer<AppearanceProvider>(
+      builder: (context, appearance, _) {
+        return Scaffold(
+          backgroundColor: appearance.brightness == Brightness.dark
+              ? const Color(0xFF1E1E1E)
+              : const Color(0xFFF8F9FA),
+          appBar: AppBar(
+            backgroundColor: appearance.brightness == Brightness.dark
+                ? const Color(0xFF2A2A2A)
+                : Colors.white,
+            elevation: 0,
+            centerTitle: true,
+            leading: IconButton(
+              icon: Icon(
+                Icons.arrow_back,
+                color: appearance.brightness == Brightness.dark
+                    ? Colors.white
+                    : Colors.black87,
+              ),
+              onPressed: () => Navigator.pop(context),
+            ),
+            title: Text(
+              'Create Profile',
+              style: TextStyle(
+                color: appearance.brightness == Brightness.dark
+                    ? Colors.white
+                    : Colors.black87,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
           ),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 16),
-            _buildProfileImageField(),
-            const SizedBox(height: 24),
-            _buildInputField(
-              label: 'Name',
-              placeholder: 'Enter your name',
-              icon: Icons.person,
-              controller: _nameController,
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Profile Image Card
+                _buildCompactCard(
+                  appearance: appearance,
+                  child: Center(
+                    child: Stack(
+                      alignment: Alignment.bottomRight,
+                      children: [
+                        Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE8EEF5),
+                            borderRadius: BorderRadius.circular(50),
+                            border: Border.all(
+                              color: appearance.primaryColor,
+                              width: 2,
+                        ),
+                        image: _profileImage != null
+                            ? DecorationImage(
+                                image: FileImage(_profileImage!),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
+                      ),
+                      child: _profileImage == null
+                          ? const Icon(
+                              Icons.camera_alt,
+                              color: Color(0xFF8B94A8),
+                              size: 32,
+                            )
+                          : null,
+                    ),
+                    GestureDetector(
+                      onTap: _showImageSourceDialog,
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: const BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 4,
+                              offset: Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.add,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            
+            // Personal Info Card
+            _buildCompactCard(
+              appearance: appearance,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Personal Information',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildCompactInputField(
+                    label: 'Full Name',
+                    placeholder: 'Enter your full name',
+                    controller: _nameController,
+                    appearance: appearance,
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildCompactDropdownFieldNew(
+                          label: 'Gender',
+                          items: ['Male', 'Female', 'Other'],
+                          onChanged: (value) {
+                            setState(() {
+                              _gender = value;
+                            });
+                          },
+                          appearance: appearance,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildCompactInputField(
+                          label: 'Age',
+                          placeholder: 'Enter age',
+                          controller: _ageController,
+                          keyboardType: TextInputType.number,
+                          appearance: appearance,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            
+            // Experience & Wage Card
+            _buildCompactCard(
+              appearance: appearance,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Work Information',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildCompactDropdownFieldNew(
+                          label: 'Experience',
+                          items: ['0-1', '1-2', '2-3', '3-5', '5+'],
+                          onChanged: (value) {
+                            _experienceController.text = value ?? '';
+                          },
+                          appearance: appearance,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildCompactInputField(
+                          label: 'Daily Wage',
+                          placeholder: 'In USD',
+                          controller: _wageController,
+                          keyboardType: TextInputType.number,
+                          appearance: appearance,
+                        ),
+                      ),
+                    ],
+                  ),
+                  _buildCompactInputField(
+                    label: 'Profession',
+                    placeholder: 'e.g. Electrician, Plumber',
+                    controller: _professionController,
+                    appearance: appearance,
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildCompactDropdownFieldNew(
+                          label: 'Profession Type',
+                          items: ['Helper', 'Technician', 'Specialist', 'Manager'],
+                          onChanged: (value) {
+                            setState(() {
+                              _professionType = value;
+                            });
+                          },
+                          appearance: appearance,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildCompactLocationFieldNew(appearance: appearance),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            
+            // Submit Button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _submitForm,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text(
+                  'Complete Profile',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
             ),
             const SizedBox(height: 16),
-            Row(
-              children: [
-                Flexible(
-                  flex: 1,
-                  child: _buildDropdownField(
-                    label: 'Gender',
-                    items: ['Male', 'Female', 'Other'],
-                    icon: Icons.wc,
-                    isCompact: true,
-                    onChanged: (value) {
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCompactCard({required Widget child, required AppearanceProvider appearance}) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: appearance.brightness == Brightness.dark
+            ? const Color(0xFF2A2A2A)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  Widget _buildCompactInputField({
+    required String label,
+    required String placeholder,
+    required TextEditingController controller,
+    required AppearanceProvider appearance,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: appearance.brightness == Brightness.dark
+                  ? Colors.white
+                  : Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 4),
+          TextField(
+            controller: controller,
+            keyboardType: keyboardType,
+            style: TextStyle(
+              fontSize: 12,
+              color: appearance.brightness == Brightness.dark
+                  ? Colors.white
+                  : Colors.black87,
+            ),
+            decoration: InputDecoration(
+              hintText: placeholder,
+              hintStyle: TextStyle(
+                fontSize: 12,
+                color: appearance.brightness == Brightness.dark
+                    ? Colors.grey[600]
+                    : const Color(0xFFA0A8B8),
+              ),
+              filled: true,
+              fillColor: appearance.brightness == Brightness.dark
+                  ? const Color(0xFF2A2A2A)
+                  : Colors.white,
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                vertical: 8,
+                horizontal: 10,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(
+                  color: appearance.brightness == Brightness.dark
+                      ? Colors.grey[700]!
+                      : Colors.grey[300]!,
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(
+                  color: appearance.brightness == Brightness.dark
+                      ? Colors.grey[700]!
+                      : Colors.grey[300]!,
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(
+                  color: Color(0xFF17A2B8),
+                  width: 1.5,
+                ),
+              ),
+            ),
+            cursorColor: AppColors.primary,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactDropdownFieldNew({
+    required String label,
+    required List<String> items,
+    required void Function(String?) onChanged,
+    required AppearanceProvider appearance,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: appearance.brightness == Brightness.dark
+                  ? Colors.white
+                  : Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Container(
+            decoration: BoxDecoration(
+              color: appearance.brightness == Brightness.dark
+                  ? const Color(0xFF2A2A2A)
+                  : Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: appearance.brightness == Brightness.dark
+                    ? Colors.grey[700]!
+                    : Colors.grey[300]!,
+              ),
+            ),
+            child: DropdownButtonFormField<String>(
+              decoration: const InputDecoration(
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                border: InputBorder.none,
+              ),
+              icon: Icon(Icons.arrow_drop_down, color: appearance.primaryColor, size: 18),
+              isExpanded: true,
+              onChanged: onChanged,
+              dropdownColor: appearance.brightness == Brightness.dark
+                  ? const Color(0xFF2A2A2A)
+                  : Colors.white,
+              style: TextStyle(
+                fontSize: 12,
+                color: appearance.brightness == Brightness.dark
+                    ? Colors.white
+                    : Colors.black87,
+              ),
+              items: items.map((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactLocationFieldNew({required AppearanceProvider appearance}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Location',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: appearance.brightness == Brightness.dark
+                  ? Colors.white
+                  : Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 4),
+          GestureDetector(
+            onTap: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => LocationPickerScreen(
+                    onLocationSelected: (location) {
                       setState(() {
-                        _gender = value;
+                        _locationController.text = location;
                       });
                     },
                   ),
                 ),
-                const SizedBox(width: 12),
-                Flexible(
-                  flex: 1,
-                  child: _buildInputField(
-                    label: 'Age',
-                    placeholder: 'Enter your age',
-                    icon: Icons.cake,
-                    controller: _ageController,
-                    keyboardType: TextInputType.number,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Flexible(
-                  flex: 1,
-                  child: _buildDropdownField(
-                    label: 'Experience (Years)',
-                    items: ['0-1', '1-2', '2-3', '3+'],
-                    icon: Icons.work,
-                    onChanged: (value) {
-                      _experienceController.text = value ?? '';
-                    },
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Flexible(
-                  flex: 1,
-                  child: _buildDropdownField(
-                    label: 'Daily Wage',
-                    items: ['200-300', '300-500', '500-800', '800+'],
-                    icon: Icons.attach_money,
-                    onChanged: (value) {
-                      _wageController.text = value ?? '';
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _buildInputField(
-              label: 'Profession',
-              placeholder: 'Enter your profession',
-              icon: Icons.business_center,
-              controller: _professionController,
-            ),
-            const SizedBox(height: 16),
-            _buildDropdownField(
-              label: 'Profession Type',
-              items: ['Helper', 'Technician'],
-              icon: Icons.category,
-              onChanged: (value) {
-                setState(() {
-                  _professionType = value;
-                });
-              },
-            ),
-            const SizedBox(height: 16),
-            _buildLocationField(),
-            const SizedBox(height: 24),
-            _buildSaveButton(),
-          ],
-        ),
-      ),
-      bottomNavigationBar: SizedBox.shrink(),
-    );
-  }
-
-  Widget _buildProfileImageField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        const Text(
-          'Profile Image (Optional)',
-          style: TextStyle(
-            color: AppColors.text,
-            fontWeight: FontWeight.w500,
-            fontSize: 16,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Center(
-          child: GestureDetector(
-            onTap: _showImageSourceDialog,
+              );
+            },
             child: Container(
-              width: 120,
-              height: 120,
               decoration: BoxDecoration(
-                color: AppColors.bgSurface,
-                borderRadius: BorderRadius.circular(60),
-                border: Border.all(color: AppColors.grey),
-                image: _profileImage != null
-                    ? DecorationImage(
-                        image: FileImage(_profileImage!),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
+                color: appearance.brightness == Brightness.dark
+                    ? const Color(0xFF2A2A2A)
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: appearance.brightness == Brightness.dark
+                      ? Colors.grey[700]!
+                      : Colors.grey[300]!,
+                ),
               ),
-              child: _profileImage == null
-                  ? const Icon(Icons.camera_alt, color: AppColors.primary, size: 40)
-                  : null,
+              padding: const EdgeInsets.symmetric(
+                vertical: 8,
+                horizontal: 10,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _locationController.text.isEmpty
+                          ? 'Select Location'
+                          : _locationController.text,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: _locationController.text.isEmpty
+                            ? (appearance.brightness == Brightness.dark
+                                ? Colors.grey[600]
+                                : const Color(0xFFA0A8B8))
+                            : (appearance.brightness == Brightness.dark
+                                ? Colors.white
+                                : Colors.black87),
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    Icons.location_on,
+                    color: appearance.primaryColor,
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInputField({
-    required String label,
-    required String placeholder,
-    required IconData icon,
-    required TextEditingController controller,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label,
-            style: const TextStyle(
-                color: AppColors.text,
-                fontWeight: FontWeight.w500,
-                fontSize: 16)),
-        const SizedBox(height: 8),
-        TextField(
-          controller: controller,
-          keyboardType: keyboardType,
-          decoration: InputDecoration(
-            hintText: placeholder,
-            hintStyle: const TextStyle(
-              color: AppColors.greyMedium,
-              fontSize: 16,
-            ),
-            filled: true,
-            fillColor: AppColors.bgSurface,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            contentPadding:
-                const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-            prefixIcon: Icon(icon, color: AppColors.primary),
-          ),
-          style: const TextStyle(color: AppColors.text, fontSize: 16),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDropdownField({
-    required String label,
-    required List<String> items,
-    required IconData icon,
-    bool isCompact = false,
-    required void Function(String?) onChanged,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label,
-            style: const TextStyle(
-                color: AppColors.text,
-                fontWeight: FontWeight.w500,
-                fontSize: 16)),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<String>(
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: AppColors.bgSurface,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            contentPadding: EdgeInsets.symmetric(
-              vertical: 14,
-              horizontal: isCompact ? 8 : 16,
-            ),
-            prefixIcon: Icon(icon, color: AppColors.primary),
-            prefixIconConstraints: isCompact
-                ? const BoxConstraints(minWidth: 36, minHeight: 36)
-                : null,
-          ),
-          dropdownColor: AppColors.bgSurface,
-          items: items
-              .map((String item) => DropdownMenuItem<String>(
-                  value: item,
-                  child: Text(
-                    item,
-                    style: TextStyle(
-                        color: AppColors.text,
-                        fontSize: isCompact ? 14 : 16),
-                  )))
-              .toList(),
-          onChanged: onChanged,
-          hint: Text(
-            'Select',
-            style: TextStyle(
-                color: AppColors.greyMedium,
-                fontSize: isCompact ? 14 : 16),
-          ),
-          isDense: isCompact,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLocationField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Location',
-          style: TextStyle(
-            color: AppColors.text,
-            fontWeight: FontWeight.w500,
-            fontSize: 16,
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _locationController,
-          enabled: false,
-          decoration: InputDecoration(
-            hintText: 'Auto-filled location',
-            hintStyle: const TextStyle(color: AppColors.greyMedium, fontSize: 16),
-            filled: true,
-            fillColor: AppColors.bgSurface,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            contentPadding:
-                const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-            prefixIcon: const Icon(Icons.location_on, color: AppColors.primary),
-          ),
-          style: const TextStyle(color: AppColors.text, fontSize: 16),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSaveButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: _submitForm,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-        ),
-        child: const Text(
-          'Save Profile',
-          style: TextStyle(
-              color: AppColors.white, fontWeight: FontWeight.bold, fontSize: 16),
-        ),
+        ],
       ),
     );
   }

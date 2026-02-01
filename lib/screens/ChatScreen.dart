@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:naka/config/app_colors.dart';
+import 'package:naka/providers/AppearanceProvider.dart';
+import 'package:provider/provider.dart';
 
 class ChatScreen extends StatelessWidget {
   final String userName;
@@ -8,13 +10,22 @@ class ChatScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return Consumer<AppearanceProvider>(
+      builder: (context, appearance, _) {
+        return Scaffold(
       appBar: AppBar(
-        backgroundColor: AppColors.bgLight,
+        backgroundColor: appearance.brightness == Brightness.dark
+            ? const Color(0xFF2A2A2A)
+            : AppColors.bgLight,
         elevation: 0,
         shadowColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.black),
+          icon: Icon(
+            Icons.arrow_back,
+            color: appearance.brightness == Brightness.dark
+                ? Colors.white
+                : AppColors.black,
+          ),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Row(
@@ -31,9 +42,11 @@ class ChatScreen extends StatelessWidget {
               children: [
                 Text(
                   userName,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: AppColors.black,
+                    color: appearance.brightness == Brightness.dark
+                        ? Colors.white
+                        : AppColors.black,
                   ),
                 ),
                 const Text(
@@ -45,6 +58,9 @@ class ChatScreen extends StatelessWidget {
           ],
         ),
       ),
+      backgroundColor: appearance.brightness == Brightness.dark
+          ? const Color(0xFF1E1E1E)
+          : Colors.white,
       body: Column(
         children: [
           // Chat messages
@@ -58,6 +74,7 @@ class ChatScreen extends StatelessWidget {
                   isSentByMe: false,
                   senderName: 'Tech Innovators Inc.',
                   avatarUrl: 'https://i.postimg.cc/zDLDCwp7/image2.jpg',
+                  appearance: appearance,
                 ),
                 _buildMessageBubble(
                   message: 'Hello, I\'m thrilled to hear that! Yes, I\'m available next week. Please let me know the available time slots.',
@@ -65,11 +82,11 @@ class ChatScreen extends StatelessWidget {
                   isSentByMe: true,
                   senderName: 'Sarah',
                   avatarUrl: 'https://i.postimg.cc/zDLDCwp7/image2.jpg',
+                  appearance: appearance,
                 ),
               ],
             ),
           ),
-          // Input field for sending messages
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Row(
@@ -79,12 +96,18 @@ class ChatScreen extends StatelessWidget {
                     decoration: InputDecoration(
                       hintText: 'Write a message...',
                       filled: true,
-                      fillColor: AppColors.searchBg,
+                      fillColor: appearance.brightness == Brightness.dark
+                          ? const Color(0xFF2A2A2A)
+                          : AppColors.searchBg,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(30),
                         borderSide: BorderSide.none,
                       ),
-                      hintStyle: const TextStyle(color: AppColors.textSecondary),
+                      hintStyle: TextStyle(
+                        color: appearance.brightness == Brightness.dark
+                            ? Colors.grey[600]
+                            : AppColors.textSecondary,
+                      ),
                     ),
                   ),
                 ),
@@ -104,6 +127,8 @@ class ChatScreen extends StatelessWidget {
         ],
       ),
     );
+      },
+    );
   }
 
   // Helper method to build message bubbles
@@ -113,6 +138,7 @@ class ChatScreen extends StatelessWidget {
     required bool isSentByMe,
     required String senderName,
     required String avatarUrl,
+    required AppearanceProvider appearance,
   }) {
     return Row(
       mainAxisAlignment: isSentByMe ? MainAxisAlignment.end : MainAxisAlignment.start,
@@ -129,23 +155,29 @@ class ChatScreen extends StatelessWidget {
             children: [
               Text(
                 senderName,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
-                  color: AppColors.textSecondary,
+                  color: appearance.brightness == Brightness.dark
+                      ? Colors.grey[400]
+                      : AppColors.textSecondary,
                 ),
               ),
               Container(
                 padding: const EdgeInsets.all(12),
                 margin: const EdgeInsets.symmetric(vertical: 4),
                 decoration: BoxDecoration(
-                  color: isSentByMe ? AppColors.primary : AppColors.searchBg,
+                  color: isSentByMe ? appearance.primaryColor : (appearance.brightness == Brightness.dark ? const Color(0xFF2A2A2A) : AppColors.searchBg),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   message,
                   style: TextStyle(
                     fontSize: 16,
-                    color: isSentByMe ? AppColors.white : AppColors.black,
+                    color: isSentByMe
+                        ? AppColors.white
+                        : (appearance.brightness == Brightness.dark
+                            ? Colors.white
+                            : AppColors.black),
                   ),
                 ),
               ),

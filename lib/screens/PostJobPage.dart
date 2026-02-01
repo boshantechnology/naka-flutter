@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:naka/utils/app_strings.dart'; // Import app_strings.dart
+import 'package:naka/config/app_colors.dart';
+import 'package:naka/utils/app_strings.dart';
+import 'package:naka/providers/AppearanceProvider.dart';
+import 'package:provider/provider.dart';
 
 class PostJobPage extends StatefulWidget {
   const PostJobPage({super.key});
@@ -165,167 +168,487 @@ class _PostJobPageState extends State<PostJobPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      appBar: AppBar(
-        backgroundColor: Colors.teal,
-        elevation: 0,
-        centerTitle: true,
-        title: Text(
-          AppStrings.postFreeJob,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
+    return Consumer<AppearanceProvider>(
+      builder: (context, appearance, _) {
+        return Scaffold(
+          backgroundColor: appearance.brightness == Brightness.dark
+              ? const Color(0xFF1E1E1E)
+              : const Color(0xFFF8F9FA),
+          appBar: AppBar(
+            backgroundColor: appearance.brightness == Brightness.dark
+                ? const Color(0xFF2A2A2A)
+                : Colors.white,
+            elevation: 0,
+            centerTitle: true,
+            leading: IconButton(
+              icon: Icon(
+                Icons.arrow_back,
+                color: appearance.brightness == Brightness.dark
+                    ? Colors.white
+                    : Colors.black87,
+              ),
+              onPressed: () => Navigator.pop(context),
+            ),
+            title: Text(
+              'Post a Job',
+              style: TextStyle(
+                color: appearance.brightness == Brightness.dark
+                    ? Colors.white
+                    : Colors.black87,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
           ),
-        ),
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSectionHeader(AppStrings.categoryDetails),
-            _buildInfoField(AppStrings.category, _selectedCategory ?? ""),
-            _buildDropdownField(
-              AppStrings.subCategory,
-              _selectedSubCategory,
-              [
-                AppStrings.fullTimeJobs, 
-                AppStrings.partTimeJobs, 
-                AppStrings.dailyWage, 
-                AppStrings.workFromHome
-              ],
-              (value) {
-                setState(() {
-                  _selectedSubCategory = value;
-                });
-              },
-              false,
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Category Section
+                _buildCompactCard(
+                  appearance: appearance,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                    'Category Details',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildCompactInfoField(AppStrings.category, _selectedCategory ?? "", appearance),
+                  _buildCompactDropdown(
+                    AppStrings.subCategory,
+                    _selectedSubCategory,
+                    [
+                      AppStrings.fullTimeJobs, 
+                      AppStrings.partTimeJobs, 
+                      AppStrings.dailyWage, 
+                      AppStrings.workFromHome
+                    ],
+                    (value) {
+                      setState(() {
+                        _selectedSubCategory = value;
+                      });
+                    },
+                    false,
+                    appearance,
+                  ),
+                ],
+              ),
             ),
-            _buildSectionHeader(AppStrings.adDetails),
-            _buildTextField(
-              AppStrings.enterTitle, 
-              _titleController,
-              isRequired: true,
+            const SizedBox(height: 10),
+            
+            // Job Details Section
+            _buildCompactCard(
+              appearance: appearance,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Job Details',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildCompactTextField(
+                    AppStrings.enterTitle, 
+                    _titleController,
+                    isRequired: true,
+                    appearance: appearance,
+                  ),
+                  _buildSearchableRoleFieldCompact(appearance),
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: _buildCompactDropdown(
+                          AppStrings.salaryType, 
+                          _selectedSalaryType, 
+                          _salaryTypes, 
+                          (value) {
+                            setState(() {
+                              _selectedSalaryType = value;
+                            });
+                          },
+                          true,
+                          appearance,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildCompactTextField(
+                          'Min Salary', 
+                          _minSalaryController,
+                          isRequired: true,
+                          keyboardType: TextInputType.number,
+                          appearance: appearance,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildCompactTextField(
+                          'Max Salary', 
+                          _maxSalaryController,
+                          isRequired: true,
+                          keyboardType: TextInputType.number,
+                          appearance: appearance,
+                        ),
+                      ),
+                    ],
+                  ),
+                  _buildCompactTextField(
+                    AppStrings.adDescription,
+                    _descriptionController,
+                    isRequired: true,
+                    maxLines: 3,
+                    appearance: appearance,
+                  ),
+                ],
+              ),
             ),
-            _buildSearchableRoleField(),
-            _buildDropdownField(
-              AppStrings.salaryType, 
-              _selectedSalaryType, 
-              _salaryTypes, 
-              (value) {
-                setState(() {
-                  _selectedSalaryType = value;
-                });
-              },
-              true,
+            const SizedBox(height: 10),
+            
+            // Location Section
+            _buildCompactCard(
+              appearance: appearance,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Location',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildCompactDropdown(
+                    AppStrings.contactInfo, 
+                    _selectedLocation, 
+                    ["Hyderabad", "Mumbai", "Delhi", "Bangalore", "Chennai"], 
+                    (value) {
+                      setState(() {
+                        _selectedLocation = value;
+                      });
+                    },
+                    true,
+                    appearance,
+                  ),
+                  _buildCompactDropdown(
+                    AppStrings.locality, 
+                    _selectedLocality, 
+                    _localities, 
+                    (value) {
+                      setState(() {
+                        _selectedLocality = value;
+                      });
+                    },
+                    true,
+                    appearance,
+                  ),
+                  _buildCompactTextField(
+                    AppStrings.mobile, 
+                    _mobileController,
+                    isRequired: true,
+                    keyboardType: TextInputType.phone,
+                    appearance: appearance,
+                  ),
+                ],
+              ),
             ),
-            _buildTextField(
-              AppStrings.minSalary, 
-              _minSalaryController,
-              isRequired: true,
-              keyboardType: TextInputType.number,
-            ),
-            _buildTextField(
-              AppStrings.maxSalary, 
-              _maxSalaryController,
-              isRequired: true,
-              keyboardType: TextInputType.number,
-            ),
-            _buildTextField(
-              AppStrings.adDescription, 
-              _descriptionController,
-              isRequired: true,
-              maxLines: 3,
-            ),
-            _buildSectionHeader(AppStrings.jobLocation),
-            _buildDropdownField(
-              AppStrings.contactInfo, 
-              _selectedLocation, 
-              ["Hyderabad", "Mumbai", "Delhi", "Bangalore", "Chennai"], 
-              (value) {
-                setState(() {
-                  _selectedLocation = value;
-                });
-              },
-              true,
-            ),
-            _buildDropdownField(
-              AppStrings.locality, 
-              _selectedLocality, 
-              _localities, 
-              (value) {
-                setState(() {
-                  _selectedLocality = value;
-                });
-              },
-              true,
-            ),
-            _buildTextField(
-              AppStrings.mobile, 
-              _mobileController,
-              isRequired: true,
-              keyboardType: TextInputType.phone,
-            ),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            const SizedBox(height: 10),
+            
+            // Privacy Section
+            _buildCompactCard(
+              appearance: appearance,
               child: Row(
                 children: [
-                  Text(
-                    AppStrings.privacy,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
+                  Checkbox(
+                    value: _maintainPrivacy,
+                    onChanged: (value) {
+                      setState(() {
+                        _maintainPrivacy = value ?? false;
+                      });
+                    },
+                    activeColor: AppColors.primary,
+                  ),
+                  Expanded(
+                    child: Text(
+                      AppStrings.maintainPrivacy,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black87,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-            CheckboxListTile(
-              title: Text(AppStrings.maintainPrivacy),
-              value: _maintainPrivacy,
-              onChanged: (value) {
-                setState(() {
-                  _maintainPrivacy = value ?? false;
-                });
-              },
-              controlAffinity: ListTileControlAffinity.leading,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 8.0),
-              activeColor: Colors.teal,
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
+            const SizedBox(height: 12),
+            
+            // Post Job Button
+            SizedBox(
+              width: double.infinity,
               child: ElevatedButton(
                 onPressed: _postJob,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.teal,
+                  backgroundColor: appearance.primaryColor,
                   foregroundColor: Colors.white,
                   elevation: 0,
-                  minimumSize: const Size(double.infinity, 50),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                 ),
                 child: Text(
-                  AppStrings.postJob,
-                  style: const TextStyle(
-                    fontSize: 16,
+                  'Post Job Now',
+                  style: appearance.getSmallStyle().copyWith(
+                    fontSize: 13,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 24),
-          ],
-        ),
-      ),
-      bottomNavigationBar: SizedBox.shrink(),
+            const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildSearchableRoleField() {
+  Widget _buildCompactCard({required Widget child, required AppearanceProvider appearance}) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: appearance.brightness == Brightness.dark
+            ? const Color(0xFF2A2A2A)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  Widget _buildCompactInfoField(String label, String value, AppearanceProvider appearance) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: appearance.brightness == Brightness.dark
+                  ? Colors.grey[500]
+                  : Colors.grey,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            value,
+            style: appearance.getSmallStyle().copyWith(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: appearance.brightness == Brightness.dark
+                  ? Colors.white
+                  : Colors.black87,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactTextField(
+    String label, 
+    TextEditingController controller, {
+    bool isRequired = false,
+    String? hintText,
+    int maxLines = 1,
+    TextInputType keyboardType = TextInputType.text,
+    AppearanceProvider? appearance,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          RichText(
+            text: TextSpan(
+              text: label,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+              children: isRequired
+                  ? const [
+                      TextSpan(
+                        text: " *",
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      )
+                    ]
+                  : [],
+            ),
+          ),
+          const SizedBox(height: 4),
+          TextField(
+            controller: controller,
+            maxLines: maxLines,
+            keyboardType: keyboardType,
+            style: const TextStyle(fontSize: 12),
+            decoration: InputDecoration(
+              hintText: hintText,
+              hintStyle: const TextStyle(fontSize: 12),
+              filled: true,
+              fillColor: appearance?.brightness == Brightness.dark
+                  ? const Color(0xFF2A2A2A)
+                  : Colors.white,
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 8,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(
+                  color: Colors.grey[300]!,
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(
+                  color: Colors.grey[300]!,
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(
+                  color: AppColors.primary,
+                  width: 1.5,
+                ),
+              ),
+            ),
+            cursorColor: AppColors.primary,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactDropdown(
+    String label,
+    String? selectedValue,
+    List<String> items,
+    Function(String?) onChanged,
+    bool isRequired,
+    AppearanceProvider? appearance,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          RichText(
+            text: TextSpan(
+              text: label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: appearance?.brightness == Brightness.dark
+                    ? Colors.white
+                    : Colors.black87,
+              ),
+              children: isRequired
+                  ? const [
+                      TextSpan(
+                        text: " *",
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      )
+                    ]
+                  : [],
+            ),
+          ),
+          const SizedBox(height: 4),
+          Container(
+            decoration: BoxDecoration(
+              color: appearance?.brightness == Brightness.dark
+                  ? const Color(0xFF2A2A2A)
+                  : Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: appearance?.brightness == Brightness.dark
+                    ? Colors.grey[700]!
+                    : Colors.grey[300]!,
+              ),
+            ),
+            child: DropdownButtonFormField<String>(
+              initialValue: selectedValue,
+              decoration: const InputDecoration(
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                border: InputBorder.none,
+              ),
+              icon: Icon(Icons.arrow_drop_down, color: appearance?.primaryColor ?? AppColors.primary, size: 18),
+              isExpanded: true,
+              onChanged: onChanged,
+              dropdownColor: appearance?.brightness == Brightness.dark
+                  ? const Color(0xFF2A2A2A)
+                  : Colors.white,
+              style: TextStyle(
+                fontSize: 12,
+                color: appearance?.brightness == Brightness.dark
+                    ? Colors.white
+                    : Colors.black87,
+              ),
+              items: items.map((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchableRoleFieldCompact(AppearanceProvider appearance) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -333,8 +656,8 @@ class _PostJobPageState extends State<PostJobPage> {
             text: TextSpan(
               text: AppStrings.selectRole,
               style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
                 color: Colors.black87,
               ),
               children: const [
@@ -348,7 +671,7 @@ class _PostJobPageState extends State<PostJobPage> {
               ],
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Container(
             decoration: BoxDecoration(
               color: Colors.white,
@@ -361,17 +684,22 @@ class _PostJobPageState extends State<PostJobPage> {
               children: [
                 TextField(
                   controller: _roleSearchController,
+                  style: const TextStyle(fontSize: 12),
                   decoration: InputDecoration(
                     hintText: AppStrings.searchRole,
+                    hintStyle: const TextStyle(fontSize: 12),
+                    isDense: true,
                     contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
+                      horizontal: 10,
+                      vertical: 8,
                     ),
                     border: InputBorder.none,
                     suffixIcon: IconButton(
+                      iconSize: 18,
+                      padding: EdgeInsets.zero,
                       icon: Icon(
                         _isRoleSearching ? Icons.close : Icons.arrow_drop_down,
-                        color: Colors.teal,
+                        color: AppColors.primary,
                       ),
                       onPressed: () {
                         setState(() {
@@ -396,13 +724,17 @@ class _PostJobPageState extends State<PostJobPage> {
                 if (_isRoleSearching)
                   Container(
                     constraints: const BoxConstraints(
-                      maxHeight: 200,
+                      maxHeight: 150,
                     ),
                     child: _filteredRoles.isEmpty
-                        ? ListTile(
-                            title: Text(
+                        ? Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Text(
                               "No roles found",
-                              style: TextStyle(color: Colors.grey[600]),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[600],
+                              ),
                             ),
                           )
                         : ListView.builder(
@@ -410,202 +742,25 @@ class _PostJobPageState extends State<PostJobPage> {
                             itemCount: _filteredRoles.length,
                             itemBuilder: (context, index) {
                               return ListTile(
-                                title: Text(_filteredRoles[index]),
+                                title: Text(
+                                  _filteredRoles[index],
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
+                                dense: true,
                                 onTap: () {
                                   _selectRole(_filteredRoles[index]);
                                 },
                                 tileColor: Colors.white,
-                                hoverColor: Colors.teal.withOpacity(0.1),
+                                hoverColor: AppColors.primary.withOpacity(0.1),
                               );
                             },
                           ),
                   ),
               ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title) {
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      color: const Color(0xFFEEEEEE),
-      width: double.infinity,
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          color: Colors.teal,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoField(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          Divider(color: Colors.teal.withOpacity(0.3)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTextField(
-    String label, 
-    TextEditingController controller, {
-    bool isRequired = false,
-    String? hintText,
-    int maxLines = 1,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          RichText(
-            text: TextSpan(
-              text: label,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: Colors.black87,
-              ),
-              children: isRequired
-                  ? const [
-                      TextSpan(
-                        text: " *",
-                        style: TextStyle(
-                          color: Colors.red,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      )
-                    ]
-                  : [],
-            ),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: controller,
-            maxLines: maxLines,
-            keyboardType: keyboardType,
-            decoration: InputDecoration(
-              hintText: hintText,
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 14,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(
-                  color: Colors.grey[300]!,
-                ),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(
-                  color: Colors.grey[300]!,
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(
-                  color: Colors.teal,
-                  width: 2,
-                ),
-              ),
-            ),
-            cursorColor: Colors.teal,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDropdownField(
-    String label,
-    String? selectedValue,
-    List<String> items,
-    Function(String?) onChanged,
-    bool isRequired,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          RichText(
-            text: TextSpan(
-              text: label,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: Colors.black87,
-              ),
-              children: isRequired
-                  ? const [
-                      TextSpan(
-                        text: " *",
-                        style: TextStyle(
-                          color: Colors.red,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      )
-                    ]
-                  : [],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: Colors.grey[300]!,
-              ),
-            ),
-            child: DropdownButtonFormField<String>(
-              initialValue: selectedValue,
-              decoration: const InputDecoration(
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                border: InputBorder.none,
-              ),
-              icon: const Icon(Icons.arrow_drop_down, color: Colors.teal),
-              isExpanded: true,
-              onChanged: onChanged,
-              dropdownColor: Colors.white,
-              items: items.map((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
-                );
-              }).toList(),
             ),
           ),
         ],

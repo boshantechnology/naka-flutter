@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:naka/config/app_colors.dart';
 import 'package:naka/screens/ChatScreen.dart'; // Import the chat screen
 
 class UserListScreen extends StatelessWidget {
@@ -36,16 +37,16 @@ class UserListScreen extends StatelessWidget {
         elevation: 0,
         title: const Text(
           'Messages',
-          style: TextStyle(color: Color(0xFF0D141C), fontWeight: FontWeight.bold),
+          style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF0D141C)),
+          icon: const Icon(Icons.arrow_back, color: AppColors.primary),
           onPressed: () => Navigator.of(context).pop(),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.more_vert, color: Color(0xFF0D141C)),
+            icon: const Icon(Icons.more_vert, color: AppColors.primary),
             onPressed: () {
               // Add functionality for more options
             },
@@ -60,7 +61,7 @@ class UserListScreen extends StatelessWidget {
             child: TextField(
               decoration: InputDecoration(
                 hintText: 'Search messages',
-                prefixIcon: const Icon(Icons.search, color: Color(0xFF49739C)),
+                prefixIcon: const Icon(Icons.search, color: AppColors.primary),
                 filled: true,
                 fillColor: const Color(0xFFE7EDF4),
                 border: OutlineInputBorder(
@@ -90,7 +91,7 @@ class UserListScreen extends StatelessWidget {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: const Color(0xFF49739C), // Outline color
+                        color: AppColors.primary, // Outline color
                         width: 2, // Outline width
                       ),
                     ),
@@ -126,7 +127,7 @@ class UserListScreen extends StatelessWidget {
       ),
       // Floating Action Button for composing a new message
       floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFF0D141C),
+        backgroundColor: AppColors.primary,
         child: const Icon(Icons.edit, color: Colors.white),
         onPressed: () {
           // Add functionality for composing a new message

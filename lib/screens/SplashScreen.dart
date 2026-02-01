@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:naka/config/app_colors.dart';
 import 'package:naka/screens/JobHomeScreen.dart'; // या अपनी main screen का path
 
 class SplashScreen extends StatefulWidget {
@@ -45,7 +46,7 @@ class _SplashScreenState extends State<SplashScreen> {
               height: 100,
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.teal,
+                color: AppColors.primary,
               ),
               child: Center(
                 child: Image.asset(
@@ -62,7 +63,7 @@ class _SplashScreenState extends State<SplashScreen> {
               style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
-                color: Colors.teal,
+                color: AppColors.primary,
                 letterSpacing: 1.2,
               ),
             ),

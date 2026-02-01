@@ -4,7 +4,9 @@ import 'package:naka/screens/NotificationScreen.dart';
 import 'package:naka/screens/PostJobPage.dart';
 import 'package:naka/screens/ProfileSetupScreen.dart';
 import 'package:naka/screens/ProfileScreen.dart';
-import 'package:naka/utils/app_strings.dart'; // Import the AppStrings class
+import 'package:naka/utils/app_strings.dart';
+import 'package:naka/providers/AppearanceProvider.dart';
+import 'package:provider/provider.dart';
 
 class JobBottomNavigationWrapper extends StatefulWidget {
   final int initialIndex;
@@ -86,22 +88,30 @@ class JobBottomNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BottomNavigationBar(
-      currentIndex: currentIndex,
-      selectedItemColor: const Color(0xFF0D141C),
-      unselectedItemColor: const Color(0xFF49739C),
-      type: BottomNavigationBarType.fixed,
-      backgroundColor: Colors.white,
-      elevation: 8,
-      showUnselectedLabels: true,
-      items: [
-        BottomNavigationBarItem(icon: const Icon(Icons.home), label: AppStrings.home),
-        BottomNavigationBarItem(icon: const Icon(Icons.search), label: AppStrings.search),
-        BottomNavigationBarItem(icon: const Icon(Icons.add_box_outlined), label: AppStrings.postJob),
-        BottomNavigationBarItem(icon: const Icon(Icons.notification_add), label: AppStrings.notifications),
-        BottomNavigationBarItem(icon: const Icon(Icons.person), label: AppStrings.profile),
-      ],
-      onTap: onTap,
+    return Consumer<AppearanceProvider>(
+      builder: (context, appearance, _) {
+        return BottomNavigationBar(
+          currentIndex: currentIndex,
+          selectedItemColor: appearance.primaryColor,
+          unselectedItemColor: appearance.brightness == Brightness.dark
+              ? Colors.grey[600]
+              : const Color(0xFF49739C),
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: appearance.brightness == Brightness.dark
+              ? const Color(0xFF2A2A2A)
+              : Colors.white,
+          elevation: 8,
+          showUnselectedLabels: true,
+          items: [
+            BottomNavigationBarItem(icon: const Icon(Icons.home), label: AppStrings.home),
+            BottomNavigationBarItem(icon: const Icon(Icons.search), label: AppStrings.search),
+            BottomNavigationBarItem(icon: const Icon(Icons.add_box_outlined), label: AppStrings.postJob),
+            BottomNavigationBarItem(icon: const Icon(Icons.notification_add), label: AppStrings.notifications),
+            BottomNavigationBarItem(icon: const Icon(Icons.person), label: AppStrings.profile),
+          ],
+          onTap: onTap,
+        );
+      },
     );
   }
 }

@@ -4,15 +4,15 @@ import 'package:flutter/material.dart';
 /// Similar to Tailwind CSS color palette
 class AppColors {
   // Primary Colors
-  static const Color primary = Color(0xFF00A699); // Teal
-  static const Color primaryLight = Color(0xFFE6F7F5); // Light teal background
-  static const Color primaryDark = Color(0xFF008B80);
+  static const Color primary = Color(0xFF17A2B8); // Professional Teal (Main brand color)
+  static const Color primaryLight = Color(0xFFE0F2F7); // Light teal background
+  static const Color primaryDark = Color(0xFF0F7A8A);
 
   // Accent Colors
   static const Color success = Color(0xFF28A745); // Green
   static const Color danger = Color(0xFFDC3545); // Red
   static const Color warning = Color(0xFFFFC107); // Yellow
-  static const Color info = Color(0xFF17A2B8); // Cyan
+  static const Color info = Color(0xFF17A2B8); // Cyan (same as primary)
 
   // Neutral Colors
   static const Color white = Color(0xFFFFFFFF);

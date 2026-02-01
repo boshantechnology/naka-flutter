@@ -19,6 +19,7 @@ dependencies:
   flutter_riverpod: ^2.5.1   # Best modern state management
   go_router: ^13.0.0        # Clean navigation system
   hooks_riverpod: ^2.5.1    # Optional: Flutter hooks with Riverpod
+  provider: ^6.1.5          # For appearance settings
   
   # UI Utilities
   google_fonts: ^6.1.0
@@ -36,7 +37,6 @@ dependencies:
   flutter_native_splash: ^2.3.10
   # Added dependencies for language support
   shared_preferences: ^2.2.2  # For storing user language preference
-  provider: ^6.1.1           # For language state management
 
 dev_dependencies:
   flutter_test:
