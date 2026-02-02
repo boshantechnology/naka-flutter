@@ -26,6 +26,7 @@ class _ProfilePageState extends State<ProfileSetupScreen> {
 
   String? _gender;
   String? _professionType;
+  String? _userRole; // Worker or Contractor
   File? _profileImage;
   final ImagePicker _picker = ImagePicker();
 
@@ -131,6 +132,13 @@ class _ProfilePageState extends State<ProfileSetupScreen> {
   }
 
    Future<void> _submitForm() async {
+    if (_userRole == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a role (Worker or Contractor)')),
+      );
+      return;
+    }
+
     final formData = {
       'name': _nameController.text,
       'gender': _gender ?? '',
@@ -141,14 +149,17 @@ class _ProfilePageState extends State<ProfileSetupScreen> {
       'professionType': _professionType ?? '',
       'location': _locationController.text,
       'profileImage': _profileImage?.path ?? 'No image selected',
+      'userRole': _userRole,
     };
   
     print('Profile Form Data:');
     formData.forEach((key, value) {
       print('$key: $value');
     });
-   final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('is_profile_done', true);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('is_profile_done', true);
+    await prefs.setString('user_role', _userRole!);
+    
     // Navigate to home screen using named route
     Navigator.pushNamedAndRemoveUntil(
       context,
@@ -253,6 +264,121 @@ class _ProfilePageState extends State<ProfileSetupScreen> {
                     ),
                   ],
                 ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            
+            // Role Selection Card
+            _buildCompactCard(
+              appearance: appearance,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'What are you?',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _userRole = 'Worker';
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: _userRole == 'Worker'
+                                  ? AppColors.primary.withOpacity(0.1)
+                                  : Colors.grey[100],
+                              border: Border.all(
+                                color: _userRole == 'Worker'
+                                    ? AppColors.primary
+                                    : Colors.grey[300]!,
+                                width: 2,
+                              ),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.person_2,
+                                  color: _userRole == 'Worker'
+                                      ? AppColors.primary
+                                      : Colors.grey[600],
+                                  size: 28,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Worker',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: _userRole == 'Worker'
+                                        ? AppColors.primary
+                                        : Colors.grey[700],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _userRole = 'Contractor';
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: _userRole == 'Contractor'
+                                  ? AppColors.primary.withOpacity(0.1)
+                                  : Colors.grey[100],
+                              border: Border.all(
+                                color: _userRole == 'Contractor'
+                                    ? AppColors.primary
+                                    : Colors.grey[300]!,
+                                width: 2,
+                              ),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.business,
+                                  color: _userRole == 'Contractor'
+                                      ? AppColors.primary
+                                      : Colors.grey[600],
+                                  size: 28,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Contractor',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: _userRole == 'Contractor'
+                                        ? AppColors.primary
+                                        : Colors.grey[700],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 10),

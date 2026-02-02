@@ -1,14 +1,55 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class AppearanceProvider extends ChangeNotifier {
-  String _selectedTheme = 'Light'; // Light, Dark, System
+class AppearanceProvider extends ChangeNotifier with WidgetsBindingObserver {
+  String _selectedTheme = 'System'; // Light, Dark, System
   String _selectedFontSize = 'Medium'; // Small, Medium, Large
   Color _primaryColor = const Color(0xFF17A2B8); // Professional Teal (Original brand color)
-  BuildContext? _contextForSystem; // Store context for system brightness detection
+  late SharedPreferences _prefs;
+  bool _isInitialized = false;
 
-  // Store context for system theme
-  void setContext(BuildContext context) {
-    _contextForSystem = context;
+  // Keys for SharedPreferences
+  static const String _themeKey = 'selected_theme';
+  static const String _fontSizeKey = 'selected_font_size';
+  static const String _colorKey = 'primary_color';
+
+  // Initialize SharedPreferences and load saved settings
+  Future<void> initialize() async {
+    if (_isInitialized) return;
+    
+    _prefs = await SharedPreferences.getInstance();
+    
+    // Load saved theme
+    _selectedTheme = _prefs.getString(_themeKey) ?? 'Light';
+    
+    // Load saved font size
+    _selectedFontSize = _prefs.getString(_fontSizeKey) ?? 'Medium';
+    
+    // Load saved color
+    final colorValue = _prefs.getInt(_colorKey);
+    if (colorValue != null) {
+      _primaryColor = Color(colorValue);
+    }
+    
+    _isInitialized = true;
+    
+    // Start listening for system brightness changes
+    WidgetsBinding.instance.addObserver(this);
+    
+    notifyListeners();
+  }
+
+  @override
+  void didChangePlatformBrightness() {
+    // Called when system brightness changes
+    // Always notify listeners when System theme is selected
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   // Getters
@@ -29,16 +70,15 @@ class AppearanceProvider extends ChangeNotifier {
     }
   }
 
-  // Theme brightness
+  // Theme brightness - get current system brightness from WidgetsBinding
   Brightness get brightness {
     switch (_selectedTheme) {
       case 'Dark':
         return Brightness.dark;
       case 'System':
-        if (_contextForSystem != null) {
-          return MediaQuery.of(_contextForSystem!).platformBrightness;
-        }
-        return Brightness.light; // Fallback to light if context not available
+        // Get system brightness directly from WidgetsBinding
+        final brightness = WidgetsBinding.instance.window.platformBrightness;
+        return brightness;
       case 'Light':
       default:
         return Brightness.light;
@@ -58,19 +98,22 @@ class AppearanceProvider extends ChangeNotifier {
     }
   }
 
-  // Setters
+  // Setters with persistence
   void setTheme(String theme) {
     _selectedTheme = theme;
+    _prefs.setString(_themeKey, theme);
     notifyListeners();
   }
 
   void setFontSize(String size) {
     _selectedFontSize = size;
+    _prefs.setString(_fontSizeKey, size);
     notifyListeners();
   }
 
   void setPrimaryColor(Color color) {
     _primaryColor = color;
+    _prefs.setInt(_colorKey, color.value);
     notifyListeners();
   }
 

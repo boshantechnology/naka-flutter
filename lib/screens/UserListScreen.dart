@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:naka/config/app_colors.dart';
-import 'package:naka/screens/ChatScreen.dart'; // Import the chat screen
+import 'package:naka/screens/ChatScreen.dart';
+import 'package:naka/providers/AppearanceProvider.dart';
+import 'package:provider/provider.dart';
 
 class UserListScreen extends StatelessWidget {
   const UserListScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Example list of users
-    final List<Map<String, String>> users = [
+    return Consumer<AppearanceProvider>(
+      builder: (context, appearance, _) {
+        // Example list of users
+        final List<Map<String, String>> users = [
       {'name': 'John Doe', 'lastMessage': 'Hey, how are you?', 'time': '7:40 AM'},
       {'name': 'Jane Smith', 'lastMessage': 'Let’s catch up soon!', 'time': 'Thu'},
       {'name': 'Michael Brown', 'lastMessage': 'Can you send me the details?', 'time': 'Wed'},
@@ -32,21 +35,29 @@ class UserListScreen extends StatelessWidget {
     ];
 
     return Scaffold(
+      backgroundColor: appearance.brightness == Brightness.dark
+          ? const Color(0xFF1E1E1E)
+          : const Color(0xFFF8F9FA),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: appearance.brightness == Brightness.dark
+            ? const Color(0xFF2A2A2A)
+            : Colors.white,
         elevation: 0,
-        title: const Text(
+        title: Text(
           'Messages',
-          style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: appearance.primaryColor,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.primary),
+          icon: Icon(Icons.arrow_back, color: appearance.primaryColor),
           onPressed: () => Navigator.of(context).pop(),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.more_vert, color: AppColors.primary),
+            icon: Icon(Icons.more_vert, color: appearance.primaryColor),
             onPressed: () {
               // Add functionality for more options
             },
@@ -61,13 +72,25 @@ class UserListScreen extends StatelessWidget {
             child: TextField(
               decoration: InputDecoration(
                 hintText: 'Search messages',
-                prefixIcon: const Icon(Icons.search, color: AppColors.primary),
+                prefixIcon: Icon(Icons.search, color: appearance.primaryColor),
                 filled: true,
-                fillColor: const Color(0xFFE7EDF4),
+                fillColor: appearance.brightness == Brightness.dark
+                    ? const Color(0xFF2A2A2A)
+                    : const Color(0xFFE7EDF4),
+                hintStyle: TextStyle(
+                  color: appearance.brightness == Brightness.dark
+                      ? Colors.grey[600]
+                      : Colors.grey[400],
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide: BorderSide.none,
                 ),
+              ),
+              style: TextStyle(
+                color: appearance.brightness == Brightness.dark
+                    ? Colors.white
+                    : Colors.black87,
               ),
             ),
           ),
@@ -78,11 +101,13 @@ class UserListScreen extends StatelessWidget {
           Expanded(
             child: ListView.separated(
               itemCount: users.length,
-              separatorBuilder: (context, index) => const Divider(
-                color: Color(0xFFE7EDF4), // Divider color
-                thickness: 1, // Divider thickness
-                indent: 16, // Left padding
-                endIndent: 16, // Right padding
+              separatorBuilder: (context, index) => Divider(
+                color: appearance.brightness == Brightness.dark
+                    ? Colors.grey[700]
+                    : const Color(0xFFE7EDF4),
+                thickness: 1,
+                indent: 16,
+                endIndent: 16,
               ),
               itemBuilder: (context, index) {
                 final user = users[index];
@@ -91,24 +116,43 @@ class UserListScreen extends StatelessWidget {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: AppColors.primary, // Outline color
-                        width: 2, // Outline width
+                        color: appearance.primaryColor,
+                        width: 2,
                       ),
                     ),
                     child: CircleAvatar(
                       radius: 20,
                       backgroundColor: const Color(0xFFFBE3C7),
-                      child: Text(user['name']![0]), // Display first letter of name
+                      child: Text(
+                        user['name']![0],
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                   title: Text(
                     user['name']!,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: appearance.brightness == Brightness.dark
+                          ? Colors.white
+                          : Colors.black87,
+                    ),
                   ),
-                  subtitle: Text(user['lastMessage']!),
+                  subtitle: Text(
+                    user['lastMessage']!,
+                    style: TextStyle(
+                      color: appearance.brightness == Brightness.dark
+                          ? Colors.grey[500]
+                          : Colors.grey[600],
+                    ),
+                  ),
                   trailing: Text(
                     user['time']!,
-                    style: const TextStyle(color: Colors.grey),
+                    style: TextStyle(
+                      color: appearance.brightness == Brightness.dark
+                          ? Colors.grey[500]
+                          : Colors.grey[500],
+                    ),
                   ),
                   onTap: () {
                     // Navigate to ChatScreen when a user is tapped
@@ -127,12 +171,14 @@ class UserListScreen extends StatelessWidget {
       ),
       // Floating Action Button for composing a new message
       floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.primary,
+        backgroundColor: appearance.primaryColor,
         child: const Icon(Icons.edit, color: Colors.white),
         onPressed: () {
           // Add functionality for composing a new message
         },
       ),
+    );
+      },
     );
   }
 }

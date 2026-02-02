@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:naka/gen_l10n/app_localizations.dart';
 import 'package:naka/screens/JobHomeScreen.dart';
 import 'package:naka/screens/NotificationScreen.dart';
 import 'package:naka/screens/PostJobPage.dart';
-import 'package:naka/screens/ProfileSetupScreen.dart';
 import 'package:naka/screens/ProfileScreen.dart';
-import 'package:naka/utils/app_strings.dart';
 import 'package:naka/providers/AppearanceProvider.dart';
 import 'package:provider/provider.dart';
 
@@ -44,12 +43,10 @@ class _JobBottomNavigationWrapperState extends State<JobBottomNavigationWrapper>
       case 0:
         return JobHomeScreen();
       case 1:
-        return ProfileSetupScreen();
-      case 2:
         return PostJobPage();
-      case 3:
+      case 2:
         return NotificationScreen();
-      case 4:
+      case 3:
         return ProfileScreen();
       default:
         return JobHomeScreen();
@@ -88,6 +85,8 @@ class JobBottomNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context) ?? AppLocalizations('en');
+    
     return Consumer<AppearanceProvider>(
       builder: (context, appearance, _) {
         return BottomNavigationBar(
@@ -103,11 +102,30 @@ class JobBottomNavigation extends StatelessWidget {
           elevation: 8,
           showUnselectedLabels: true,
           items: [
-            BottomNavigationBarItem(icon: const Icon(Icons.home), label: AppStrings.home),
-            BottomNavigationBarItem(icon: const Icon(Icons.search), label: AppStrings.search),
-            BottomNavigationBarItem(icon: const Icon(Icons.add_box_outlined), label: AppStrings.postJob),
-            BottomNavigationBarItem(icon: const Icon(Icons.notification_add), label: AppStrings.notifications),
-            BottomNavigationBarItem(icon: const Icon(Icons.person), label: AppStrings.profile),
+            BottomNavigationBarItem(
+              icon: Icon(
+                currentIndex == 0 ? Icons.home : Icons.home_outlined,
+              ),
+              label: loc.home,
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(
+                currentIndex == 1 ? Icons.add_box : Icons.add_box_outlined,
+              ),
+              label: loc.postJob,
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(
+                currentIndex == 2 ? Icons.mail : Icons.mail_outline,
+              ),
+              label: 'Messages',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(
+                currentIndex == 3 ? Icons.person : Icons.person_outline,
+              ),
+              label: loc.profile,
+            ),
           ],
           onTap: onTap,
         );

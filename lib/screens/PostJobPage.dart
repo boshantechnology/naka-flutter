@@ -187,7 +187,11 @@ class _PostJobPageState extends State<PostJobPage> {
                     ? Colors.white
                     : Colors.black87,
               ),
-              onPressed: () => Navigator.pop(context),
+              onPressed: () {
+                // Navigate to home by finding the parent JobBottomNavigationWrapper
+                // and updating its selected index to 0
+                Navigator.of(context).pushNamed('/home');
+              },
             ),
             title: Text(
               'Post a Job',
@@ -655,10 +659,12 @@ class _PostJobPageState extends State<PostJobPage> {
           RichText(
             text: TextSpan(
               text: AppStrings.selectRole,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: Colors.black87,
+                color: appearance.brightness == Brightness.dark
+                    ? Colors.white
+                    : Colors.black87,
               ),
               children: const [
                 TextSpan(
@@ -674,20 +680,34 @@ class _PostJobPageState extends State<PostJobPage> {
           const SizedBox(height: 4),
           Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: appearance.brightness == Brightness.dark
+                  ? const Color(0xFF2A2A2A)
+                  : Colors.white,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: Colors.grey[300]!,
+                color: (appearance.brightness == Brightness.dark
+                    ? Colors.grey[700]
+                    : Colors.grey[300]) ?? Colors.grey[300]!,
               ),
             ),
             child: Column(
               children: [
                 TextField(
                   controller: _roleSearchController,
-                  style: const TextStyle(fontSize: 12),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: appearance.brightness == Brightness.dark
+                        ? Colors.white
+                        : Colors.black87,
+                  ),
                   decoration: InputDecoration(
                     hintText: AppStrings.searchRole,
-                    hintStyle: const TextStyle(fontSize: 12),
+                    hintStyle: TextStyle(
+                      fontSize: 12,
+                      color: appearance.brightness == Brightness.dark
+                          ? Colors.grey[600]
+                          : Colors.grey[400],
+                    ),
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 10,
@@ -699,7 +719,7 @@ class _PostJobPageState extends State<PostJobPage> {
                       padding: EdgeInsets.zero,
                       icon: Icon(
                         _isRoleSearching ? Icons.close : Icons.arrow_drop_down,
-                        color: AppColors.primary,
+                        color: appearance.primaryColor,
                       ),
                       onPressed: () {
                         setState(() {
@@ -733,7 +753,9 @@ class _PostJobPageState extends State<PostJobPage> {
                               "No roles found",
                               style: TextStyle(
                                 fontSize: 11,
-                                color: Colors.grey[600],
+                                color: appearance.brightness == Brightness.dark
+                                    ? Colors.grey[500]
+                                    : Colors.grey[600],
                               ),
                             ),
                           )
@@ -744,7 +766,12 @@ class _PostJobPageState extends State<PostJobPage> {
                               return ListTile(
                                 title: Text(
                                   _filteredRoles[index],
-                                  style: const TextStyle(fontSize: 12),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: appearance.brightness == Brightness.dark
+                                        ? Colors.white
+                                        : Colors.black87,
+                                  ),
                                 ),
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 10,
@@ -754,8 +781,10 @@ class _PostJobPageState extends State<PostJobPage> {
                                 onTap: () {
                                   _selectRole(_filteredRoles[index]);
                                 },
-                                tileColor: Colors.white,
-                                hoverColor: AppColors.primary.withOpacity(0.1),
+                                tileColor: appearance.brightness == Brightness.dark
+                                    ? const Color(0xFF2A2A2A)
+                                    : Colors.white,
+                                hoverColor: appearance.primaryColor.withOpacity(0.1),
                               );
                             },
                           ),

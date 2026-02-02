@@ -9,29 +9,57 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<AppearanceProvider>(
       builder: (context, appearance, _) {
-        return ListView(
-          padding: const EdgeInsets.all(16.0),
-          children: [
-            Text(
+        return Scaffold(
+          backgroundColor: appearance.brightness == Brightness.dark
+              ? const Color(0xFF1E1E1E)
+              : Colors.white,
+          appBar: AppBar(
+            backgroundColor: appearance.brightness == Brightness.dark
+                ? const Color(0xFF2A2A2A)
+                : Colors.white,
+            elevation: 0,
+            title: Text(
               'Settings',
               style: TextStyle(
-                fontSize: 24,
+                color: appearance.brightness == Brightness.dark
+                    ? Colors.white
+                    : Colors.black,
                 fontWeight: FontWeight.bold,
-                color: appearance.brightness == Brightness.dark ? Colors.white : Colors.black,
               ),
             ),
-            const SizedBox(height: 24),
-            
-            // APPEARANCE SECTION
-            Text(
-              'Appearance',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey,
+            leading: IconButton(
+              icon: Icon(
+                Icons.arrow_back,
+                color: appearance.brightness == Brightness.dark
+                    ? Colors.white
+                    : Colors.black,
               ),
+              onPressed: () => Navigator.pop(context),
             ),
-            const SizedBox(height: 12),
+          ),
+          body: ListView(
+            padding: const EdgeInsets.all(16.0),
+            children: [
+              Text(
+                'Settings',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: appearance.brightness == Brightness.dark ? Colors.white : Colors.black,
+                ),
+              ),
+              const SizedBox(height: 24),
+              
+              // APPEARANCE SECTION
+              Text(
+                'Appearance',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 12),
             
             // Theme Selection
             Container(
@@ -148,25 +176,31 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            ListTile(
-              title: const Text('Profile'),
-              trailing: const Icon(Icons.arrow_forward),
-              onTap: () {},
-            ),
-            ListTile(
-              title: const Text('Notifications'),
-              trailing: const Icon(Icons.arrow_forward),
-              onTap: () {},
-            ),
-            ListTile(
-              title: const Text('Privacy'),
-              trailing: const Icon(Icons.arrow_forward),
-              onTap: () {},
-            ),
-            ListTile(
-              title: const Text('Security'),
-              trailing: const Icon(Icons.arrow_forward),
-              onTap: () {},
+            Material(
+              child: Column(
+                children: [
+                  ListTile(
+                    title: const Text('Profile'),
+                    trailing: const Icon(Icons.arrow_forward),
+                    onTap: () {},
+                  ),
+                  ListTile(
+                    title: const Text('Notifications'),
+                    trailing: const Icon(Icons.arrow_forward),
+                    onTap: () {},
+                  ),
+                  ListTile(
+                    title: const Text('Privacy'),
+                    trailing: const Icon(Icons.arrow_forward),
+                    onTap: () {},
+                  ),
+                  ListTile(
+                    title: const Text('Security'),
+                    trailing: const Icon(Icons.arrow_forward),
+                    onTap: () {},
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 24),
             
@@ -179,17 +213,24 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            ListTile(
-              title: const Text('Help Center'),
-              trailing: const Icon(Icons.arrow_forward),
-              onTap: () {},
+            Material(
+              child: Column(
+                children: [
+                  ListTile(
+                    title: const Text('Help Center'),
+                    trailing: const Icon(Icons.arrow_forward),
+                    onTap: () {},
+                  ),
+                  ListTile(
+                    title: const Text('About App'),
+                    trailing: const Icon(Icons.arrow_forward),
+                    onTap: () {},
+                  ),
+                ],
+              ),
             ),
-            ListTile(
-              title: const Text('About App'),
-              trailing: const Icon(Icons.arrow_forward),
-              onTap: () {},
-            ),
-          ],
+            ],
+          ),
         );
       },
     );

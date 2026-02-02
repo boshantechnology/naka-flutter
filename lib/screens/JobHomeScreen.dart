@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:naka/screens/UserListScreen.dart';
-import 'package:naka/widgets/JobCard.dart';
-import 'package:naka/screens/SettingsScreen.dart';
+import 'package:naka/screens/WorkerDetailsPage.dart';
 import 'package:naka/screens/JobDetailsPage.dart';
+import 'package:naka/widgets/JobCard.dart';
 import 'package:naka/providers/AppearanceProvider.dart';
+import 'package:naka/gen_l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class JobHomeScreen extends StatefulWidget {
   const JobHomeScreen({super.key});
@@ -22,6 +24,7 @@ class _JobHomeScreenState extends State<JobHomeScreen> {
   late Timer _timer;
   String? _selectedCategory; // Track selected category
   String _searchQuery = ''; // Track search query
+  String? _userRole; // Track user role (Worker/Contractor)
 
   final List<String> bannerImages = [
     'https://i.postimg.cc/zDLDCwp7/image2.jpg',
@@ -32,11 +35,24 @@ class _JobHomeScreenState extends State<JobHomeScreen> {
   @override
   void initState() {
     super.initState();
-    _startAutoScroll();
+    _loadUserRole();
+    // Delay the auto scroll to ensure PageView is built first
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _startAutoScroll();
+    });
+  }
+
+  Future<void> _loadUserRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _userRole = prefs.getString('user_role') ?? 'Worker';
+    });
   }
 
   void _startAutoScroll() {
     _timer = Timer.periodic(const Duration(seconds: 3), (Timer timer) {
+      if (!mounted || !_pageController.hasClients) return;
+      
       if (_currentPage < bannerImages.length - 1) {
         _currentPage++;
       } else {
@@ -64,114 +80,155 @@ class _JobHomeScreenState extends State<JobHomeScreen> {
       builder: (context, appearance, _) {
         return Scaffold(
           key: scaffoldKey,
-          drawer: Drawer(child: SettingsScreen()),
           backgroundColor: appearance.brightness == Brightness.dark 
               ? const Color(0xFF1E1E1E)
-              : Colors.white,
-          body: Column(
-            children: [
-              // FIXED Search Bar - LinkedIn Style
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                child: Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        scaffoldKey.currentState?.openDrawer();
-                      },
-                      child: Container(
+              : const Color(0xFFDDD9CE),
+          appBar: PreferredSize(
+            preferredSize: const Size.fromHeight(70),
+            child: Container(
+              decoration: BoxDecoration(
+                color: appearance.brightness == Brightness.dark
+                    ? const Color(0xFF1E1E1E)
+                    : Colors.white,
+                border: Border(
+                  bottom: BorderSide(
+                    color: appearance.brightness == Brightness.dark
+                        ? Colors.grey[800]!
+                        : Colors.grey[200]!,
+                    width: 0.5,
+                  ),
+                ),
+              ),
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+                  child: Row(
+                    children: [
+                      Container(
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(color: appearance.primaryColor, width: 2),
+                          border: Border.all(
+                            color: appearance.primaryColor.withValues(alpha: 0.3),
+                            width: 1.5,
+                          ),
                         ),
                         child: const CircleAvatar(
-                          radius: 16,
+                          radius: 14,
                           backgroundColor: Color(0xFFFBE3C7),
                           backgroundImage: NetworkImage('https://i.postimg.cc/zDLDCwp7/image2.jpg'),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: appearance.brightness == Brightness.dark
-                              ? const Color(0xFF2A2A2A)
-                              : const Color(0xEEF0F2F5),
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 4,
-                              offset: const Offset(0, 1),
-                            ),
-                          ],
-                        ),
-                        child: TextField(
-                          controller: _searchController,
-                          onChanged: (value) {
-                            setState(() {
-                              _searchQuery = value.toLowerCase();
-                            });
-                          },
-                          decoration: InputDecoration(
-                            hintText: 'Search for jobs...',
-                            hintStyle: TextStyle(
-                              color: appearance.brightness == Brightness.dark
-                                  ? Colors.grey[600]
-                                  : const Color(0xFF65676B),
-                              fontSize: 14,
-                            ),
-                            prefixIcon: Icon(Icons.search, color: appearance.primaryColor, size: 20),
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            isDense: true,
-                          ),
-                          style: TextStyle(
-                            fontSize: 14,
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Container(
+                          height: 35,
+                          decoration: BoxDecoration(
                             color: appearance.brightness == Brightness.dark
-                                ? Colors.white
-                                : Colors.black,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    IconButton(
-                      icon: Stack(
-                        children: [
-                          Icon(Icons.chat, color: appearance.primaryColor, size: 30),
-                          Positioned(
-                            right: 0,
-                            top: -5,
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: const BoxDecoration(
-                                color: Colors.red,
-                                shape: BoxShape.circle,
+                                ? const Color(0xFF1A1A1A)
+                                : Colors.white,
+                            borderRadius: BorderRadius.circular(28),
+                            border: Border.all(
+                              color: appearance.brightness == Brightness.dark
+                                  ? Colors.grey[500]!
+                                  : Colors.grey[300]!,
+                              width: 1.2,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.03),
+                                blurRadius: 3,
+                                offset: const Offset(0, 1),
                               ),
-                              child: const Text(
-                                '3',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                child: Icon(
+                                  Icons.search,
+                                  color: appearance.brightness == Brightness.dark
+                                      ? Colors.grey[500]
+                                      : Colors.grey[500],
+                                  size: 20,
                                 ),
                               ),
-                            ),
+                              Expanded(
+                                child: TextField(
+                                  controller: _searchController,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _searchQuery = value.toLowerCase();
+                                    });
+                                  },
+                                  decoration: InputDecoration(
+                                    hintText: 'Search',
+                                    hintStyle: TextStyle(
+                                      color: appearance.brightness == Brightness.dark
+                                          ? Colors.grey[500]
+                                          : Colors.grey[500],
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                                    isDense: false,
+                                    suffixIcon: _searchController.text.isNotEmpty
+                                        ? GestureDetector(
+                                            onTap: () {
+                                              _searchController.clear();
+                                              setState(() {
+                                                _searchQuery = '';
+                                              });
+                                            },
+                                            child: Padding(
+                                              padding: const EdgeInsets.only(right: 8),
+                                              child: Icon(
+                                                Icons.clear,
+                                                color: Colors.black,
+                                                size: 16,
+                                              ),
+                                            ),
+                                          )
+                                        : null,
+                                  ),
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: appearance.brightness == Brightness.dark
+                                        ? Colors.white
+                                        : Colors.black,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const UserListScreen()),
-                        );
-                      },
-                    ),
-                  ],
+                      const SizedBox(width: 10),
+                      IconButton(
+                        icon: Icon(
+                          Icons.chat,
+                          color: appearance.brightness == Brightness.dark
+                              ? Colors.grey[400]
+                              : Colors.grey[700],
+                          size: 20,
+                        ),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const UserListScreen()),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ),
+            ),
+          ),
+          body: Column(
+            children: [
 
               // Expandable content
               Expanded(
@@ -179,7 +236,7 @@ class _JobHomeScreenState extends State<JobHomeScreen> {
                   slivers: [
                     // Collapsible Carousel Banner
                     SliverAppBar(
-                      expandedHeight: 140,
+                      expandedHeight: 90,
                       floating: true,
                       snap: true,
                       pinned: false,
@@ -193,10 +250,7 @@ class _JobHomeScreenState extends State<JobHomeScreen> {
                           controller: _pageController,
                           itemCount: bannerImages.length,
                           itemBuilder: (context, index) {
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: JobCard(imageUrl: bannerImages[index]),
-                            );
+                            return JobCard(imageUrl: bannerImages[index]);
                           },
                         ),
                       ),
@@ -220,79 +274,109 @@ class _JobHomeScreenState extends State<JobHomeScreen> {
                     SliverList(
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {
-                          final filteredJobs = _jobListings.where((job) {
-                            // Filter by search query
-                            final title = job['title']!.toLowerCase();
-                            final company = job['company']!.toLowerCase();
-                            final location = job['location']!.toLowerCase();
-                            
-                            final matchesSearch = _searchQuery.isEmpty ||
-                                title.contains(_searchQuery) ||
-                                company.contains(_searchQuery) ||
-                                location.contains(_searchQuery);
-                            
-                            // Filter by selected category
-                            bool matchesCategory = true;
-                            if (_selectedCategory != null) {
-                              final category = _selectedCategory!.toLowerCase();
-                              // Match common keywords
-                              if (category == 'video' && !title.contains('video')) matchesCategory = false;
-                              if (category == 'design' && !(title.contains('design') || title.contains('graphic') || title.contains('ui') || title.contains('ux'))) matchesCategory = false;
-                              if (category == 'tech' && !(title.contains('developer') || title.contains('engineer') || title.contains('devops') || title.contains('system'))) matchesCategory = false;
-                              if (category == 'market' && !(title.contains('marketing') || title.contains('specialist') || title.contains('analyst'))) matchesCategory = false;
-                              if (category == 'finance' && !(title.contains('finance') || title.contains('accountant') || title.contains('analyst'))) matchesCategory = false;
-                            }
-                            
-                            return matchesSearch && matchesCategory;
-                          }).toList();
+                          // Show different content based on user role
+                          if (_userRole == 'Worker') {
+                            // WORKER - Show Job Posts
+                            final filteredJobs = _contractorJobs.where((job) {
+                              final jobTitle = job['title']!.toLowerCase();
+                              final location = job['location']!.toLowerCase();
+                              
+                              final matchesSearch = _searchQuery.isEmpty ||
+                                  jobTitle.contains(_searchQuery) ||
+                                  location.contains(_searchQuery);
+                              
+                              return matchesSearch;
+                            }).toList();
 
-                          if (filteredJobs.isEmpty) {
-                            return const Padding(
-                              padding: EdgeInsets.all(16.0),
-                              child: Text(
-                                'No jobs found',
-                                style: TextStyle(color: Colors.grey),
+                            if (filteredJobs.isEmpty) {
+                              return const Padding(
+                                padding: EdgeInsets.all(16.0),
+                                child: Text(
+                                  'No jobs found',
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              );
+                            }
+
+                            return GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => JobDetailsPage(job: filteredJobs[index]),
+                                  ),
+                                );
+                              },
+                              child: _ContractorJobCard(
+                                job: filteredJobs[index],
+                                appearance: appearance,
+                              ),
+                            );
+                          } else {
+                            // CONTRACTOR - Show Worker Cards
+                            final filteredWorkers = _jobListings.where((worker) {
+                              final workerName = worker['workerName']!.toLowerCase();
+                              final workerType = worker['workerType']!.toLowerCase();
+                              final skills = worker['skills']!.toLowerCase();
+                              
+                              final matchesSearch = _searchQuery.isEmpty ||
+                                  workerName.contains(_searchQuery) ||
+                                  workerType.contains(_searchQuery) ||
+                                  skills.contains(_searchQuery);
+                              
+                              // Filter by selected category
+                              bool matchesCategory = true;
+                              if (_selectedCategory != null) {
+                                matchesCategory = worker['workerType'] == _selectedCategory;
+                              }
+                              
+                              return matchesSearch && matchesCategory;
+                            }).toList();
+
+                            if (filteredWorkers.isEmpty) {
+                              return const Padding(
+                                padding: EdgeInsets.all(16.0),
+                                child: Text(
+                                  'No workers found',
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              );
+                            }
+
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 0.0, vertical: 1.0),
+                              child: _buildWorkerCard(
+                                filteredWorkers[index],
+                                appearance,
                               ),
                             );
                           }
-
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
-                            child: _buildJobCard(
-                              filteredJobs[index]['title']!,
-                              filteredJobs[index]['company']!,
-                              filteredJobs[index]['location']!,
-                              filteredJobs[index]['type']!,
-                              filteredJobs[index]['salary']!,
-                              appearance,
-                            ),
-                          );
                         },
-                        childCount: _jobListings.where((job) {
-                          // Filter by search query
-                          final title = job['title']!.toLowerCase();
-                          final company = job['company']!.toLowerCase();
-                          final location = job['location']!.toLowerCase();
-                          
-                          final matchesSearch = _searchQuery.isEmpty ||
-                              title.contains(_searchQuery) ||
-                              company.contains(_searchQuery) ||
-                              location.contains(_searchQuery);
-                          
-                          // Filter by selected category
-                          bool matchesCategory = true;
-                          if (_selectedCategory != null) {
-                            final category = _selectedCategory!.toLowerCase();
-                            // Match common keywords
-                            if (category == 'video' && !title.contains('video')) matchesCategory = false;
-                            if (category == 'design' && !(title.contains('design') || title.contains('graphic') || title.contains('ui') || title.contains('ux'))) matchesCategory = false;
-                            if (category == 'tech' && !(title.contains('developer') || title.contains('engineer') || title.contains('devops') || title.contains('system'))) matchesCategory = false;
-                            if (category == 'market' && !(title.contains('marketing') || title.contains('specialist') || title.contains('analyst'))) matchesCategory = false;
-                            if (category == 'finance' && !(title.contains('finance') || title.contains('accountant') || title.contains('analyst'))) matchesCategory = false;
-                          }
-                          
-                          return matchesSearch && matchesCategory;
-                        }).length,
+                        childCount: _userRole == 'Worker'
+                            ? _contractorJobs.where((job) {
+                                final jobTitle = job['title']!.toLowerCase();
+                                final location = job['location']!.toLowerCase();
+                                return _searchQuery.isEmpty ||
+                                    jobTitle.contains(_searchQuery) ||
+                                    location.contains(_searchQuery);
+                              }).length
+                            : _jobListings.where((worker) {
+                                final workerName = worker['workerName']!.toLowerCase();
+                                final workerType = worker['workerType']!.toLowerCase();
+                                final skills = worker['skills']!.toLowerCase();
+                                
+                                final matchesSearch = _searchQuery.isEmpty ||
+                                    workerName.contains(_searchQuery) ||
+                                    workerType.contains(_searchQuery) ||
+                                    skills.contains(_searchQuery);
+                                
+                                bool matchesCategory = true;
+                                if (_selectedCategory != null) {
+                                  matchesCategory = worker['workerType'] == _selectedCategory;
+                                }
+                                
+                                return matchesSearch && matchesCategory;
+                              }).length,
                       ),
                     ),
                   ],
@@ -306,111 +390,1537 @@ class _JobHomeScreenState extends State<JobHomeScreen> {
     );
   }
 
-  String _getCategoryFromTitle(String title) {
-    final lowerTitle = title.toLowerCase();
+  final List<Map<String, dynamic>> _jobListings = [
+    // CARPENTER
+    {'workerName': 'Rajesh Kumar', 'workerType': 'Carpenter', 'dailyRate': 600, 'halfDayRate': 350, 'hourlyRate': 100, 'rating': 4.8, 'reviewCount': 127, 'skills': 'Wood, Furniture, Doors', 'location': 'Andheri West', 'distance': '2 km', 'availability': 'Available Today'},
+    {'workerName': 'Vikram Singh', 'workerType': 'Carpenter', 'dailyRate': 550, 'halfDayRate': 320, 'hourlyRate': 90, 'rating': 4.6, 'reviewCount': 95, 'skills': 'Woodwork, Repairs, Cabinets', 'location': 'Bandra', 'distance': '3.5 km', 'availability': 'Free Tomorrow'},
+    {'workerName': 'Arjun Patel', 'workerType': 'Carpenter', 'dailyRate': 650, 'halfDayRate': 380, 'hourlyRate': 110, 'rating': 4.9, 'reviewCount': 152, 'skills': 'Custom Furniture, Installation', 'location': 'Dadar', 'distance': '1.5 km', 'availability': 'Available Today'},
     
-    if (lowerTitle.contains('video')) {
-      return 'Video';
-    } else if (lowerTitle.contains('design') || lowerTitle.contains('graphic') || lowerTitle.contains('ui') || lowerTitle.contains('ux')) {
-      return 'Design';
-    } else if (lowerTitle.contains('developer') || lowerTitle.contains('engineer') || lowerTitle.contains('devops') || lowerTitle.contains('system') || lowerTitle.contains('machine learning') || lowerTitle.contains('qa') || lowerTitle.contains('architect')) {
-      return 'Tech';
-    } else if (lowerTitle.contains('marketing') || lowerTitle.contains('specialist') || lowerTitle.contains('seo') || lowerTitle.contains('brand') || lowerTitle.contains('content') || lowerTitle.contains('digital')) {
-      return 'Market';
-    } else if (lowerTitle.contains('finance') || lowerTitle.contains('accountant') || lowerTitle.contains('financial') || lowerTitle.contains('investment') || lowerTitle.contains('compliance')) {
-      return 'Finance';
-    }
+    // PLUMBER
+    {'workerName': 'Rohit Sharma', 'workerType': 'Plumber', 'dailyRate': 500, 'halfDayRate': 300, 'hourlyRate': 80, 'rating': 4.7, 'reviewCount': 110, 'skills': 'Pipe Fitting, Repairs, Installation', 'location': 'Navi Mumbai', 'distance': '5 km', 'availability': 'Available Today'},
+    {'workerName': 'Manoj Kumar', 'workerType': 'Plumber', 'dailyRate': 450, 'halfDayRate': 270, 'hourlyRate': 75, 'rating': 4.5, 'reviewCount': 85, 'skills': 'Drainage, Water System, Repairs', 'location': 'Thane', 'distance': '8 km', 'availability': 'Free Tomorrow'},
+    {'workerName': 'Sandeep Yadav', 'workerType': 'Plumber', 'dailyRate': 550, 'halfDayRate': 320, 'hourlyRate': 85, 'rating': 4.8, 'reviewCount': 130, 'skills': 'Pipe Work, Leakage, Installation', 'location': 'Powai', 'distance': '4 km', 'availability': 'Available Today'},
     
-    return 'Video'; // Default category
+    // TAILOR
+    {'workerName': 'Priya Sharma', 'workerType': 'Tailor', 'dailyRate': 400, 'halfDayRate': 240, 'hourlyRate': 70, 'rating': 4.9, 'reviewCount': 165, 'skills': 'Stitching, Alterations, Designs', 'location': 'Fort', 'distance': '2.8 km', 'availability': 'Available Today'},
+    {'workerName': 'Anjali Verma', 'workerType': 'Tailor', 'dailyRate': 350, 'halfDayRate': 210, 'hourlyRate': 60, 'rating': 4.6, 'reviewCount': 98, 'skills': 'Embroidery, Alterations, Stitching', 'location': 'Colaba', 'distance': '6 km', 'availability': 'Free Tomorrow'},
+    {'workerName': 'Neha Singh', 'workerType': 'Tailor', 'dailyRate': 450, 'halfDayRate': 270, 'hourlyRate': 75, 'rating': 4.7, 'reviewCount': 120, 'skills': 'Custom Designs, Wedding Clothes', 'location': 'Worli', 'distance': '1.2 km', 'availability': 'Available Today'},
+    
+    // MASON
+    {'workerName': 'Pradeep Singh', 'workerType': 'Mason', 'dailyRate': 700, 'halfDayRate': 420, 'hourlyRate': 120, 'rating': 4.7, 'reviewCount': 142, 'skills': 'Brick Laying, Tiling, Concrete', 'location': 'Mulund', 'distance': '4.5 km', 'availability': 'Available Today'},
+    {'workerName': 'Mohit Yadav', 'workerType': 'Mason', 'dailyRate': 650, 'halfDayRate': 390, 'hourlyRate': 110, 'rating': 4.5, 'reviewCount': 98, 'skills': 'Wall Construction, Plastering', 'location': 'Kanjurmarg', 'distance': '6 km', 'availability': 'Free Tomorrow'},
+    {'workerName': 'Ramesh Kumar', 'workerType': 'Mason', 'dailyRate': 750, 'halfDayRate': 450, 'hourlyRate': 130, 'rating': 4.8, 'reviewCount': 167, 'skills': 'Tile Work, Flooring, Finishing', 'location': 'Ghatkopar', 'distance': '3.8 km', 'availability': 'Available Today'},
+    
+    // FACTORY WORKER
+    {'workerName': 'Suresh Patel', 'workerType': 'Factory Worker', 'dailyRate': 550, 'halfDayRate': 330, 'hourlyRate': 95, 'rating': 4.4, 'reviewCount': 67, 'skills': 'Assembly, Packing, Quality Check', 'location': 'MIDC', 'distance': '12 km', 'availability': 'Available Today'},
+    {'workerName': 'Dinesh Kumar', 'workerType': 'Factory Worker', 'dailyRate': 500, 'halfDayRate': 300, 'hourlyRate': 85, 'rating': 4.5, 'reviewCount': 72, 'skills': 'Machine Operation, Assembly', 'location': 'Wadala', 'distance': '9 km', 'availability': 'Free Tomorrow'},
+    {'workerName': 'Harsh Mishra', 'workerType': 'Factory Worker', 'dailyRate': 600, 'halfDayRate': 360, 'hourlyRate': 105, 'rating': 4.6, 'reviewCount': 88, 'skills': 'Quality Control, Packaging', 'location': 'Mahape', 'distance': '15 km', 'availability': 'Available Today'},
+    
+    // KITCHEN HELPER
+    {'workerName': 'Meena Devi', 'workerType': 'Kitchen Helper', 'dailyRate': 350, 'halfDayRate': 210, 'hourlyRate': 60, 'rating': 4.8, 'reviewCount': 145, 'skills': 'Cooking, Cleaning, Food Prep', 'location': 'Mahim', 'distance': '3.2 km', 'availability': 'Available Today'},
+    {'workerName': 'Lakshmi Sharma', 'workerType': 'Kitchen Helper', 'dailyRate': 300, 'halfDayRate': 180, 'hourlyRate': 50, 'rating': 4.5, 'reviewCount': 92, 'skills': 'Meal Prep, Kitchen Cleaning', 'location': 'Kala Ghoda', 'distance': '5.5 km', 'availability': 'Free Tomorrow'},
+    {'workerName': 'Ritu Verma', 'workerType': 'Kitchen Helper', 'dailyRate': 400, 'halfDayRate': 240, 'hourlyRate': 70, 'rating': 4.7, 'reviewCount': 118, 'skills': 'Cooking, Catering, Food Safety', 'location': 'Borivali', 'distance': '11 km', 'availability': 'Available Today'},
+    
+    // MESSENGER
+    {'workerName': 'Arun Singh', 'workerType': 'Messenger', 'dailyRate': 400, 'halfDayRate': 240, 'hourlyRate': 65, 'rating': 4.6, 'reviewCount': 103, 'skills': 'Delivery, Document Handling', 'location': 'Fort', 'distance': '1 km', 'availability': 'Available Today'},
+    {'workerName': 'Akshay Rao', 'workerType': 'Messenger', 'dailyRate': 350, 'halfDayRate': 210, 'hourlyRate': 55, 'rating': 4.4, 'reviewCount': 78, 'skills': 'Quick Delivery, Reliable', 'location': 'CST', 'distance': '2.2 km', 'availability': 'Free Tomorrow'},
+    {'workerName': 'Nikhil Desai', 'workerType': 'Messenger', 'dailyRate': 450, 'halfDayRate': 270, 'hourlyRate': 75, 'rating': 4.7, 'reviewCount': 125, 'skills': 'Courier, Document Management', 'location': 'VT', 'distance': '0.8 km', 'availability': 'Available Today'},
+  ];
+
+  final List<Map<String, dynamic>> _contractorJobs = [
+    // CONTRACTOR JOB POSTS
+    {'title': 'Need Carpenter for Kitchen Renovation', 'company': 'Sharma Household', 'location': 'Andheri West', 'salary': '₹5,000 - ₹8,000', 'isRemote': false, 'posterImage': 'https://via.placeholder.com/150', 'imageUrl': 'https://i.postimg.cc/zDLDCwp7/image2.jpg', 'description': 'Looking for experienced carpenter for kitchen cabinet installation and design', 'workersNeeded': 2, 'daysRequired': 5, 'postedDate': '2 days ago'},
+    {'title': 'Plumbing Work - New Apartment', 'company': 'Patel Construction', 'location': 'Bandra', 'salary': '₹6,000 - ₹9,000', 'isRemote': false, 'posterImage': 'https://via.placeholder.com/150', 'imageUrl': 'https://i.postimg.cc/3RRVHBWc/image1.png', 'description': 'Complete plumbing setup needed for 2BHK apartment, including water connections and fixtures', 'workersNeeded': 3, 'daysRequired': 4, 'postedDate': '1 day ago'},
+    {'title': 'Interior Design - Home Makeover', 'company': 'Design Studio Mumbai', 'location': 'Worli', 'salary': '₹10,000 - ₹15,000', 'isRemote': false, 'posterImage': 'https://via.placeholder.com/150', 'description': 'Modern interior design and renovation for residential space', 'workersNeeded': 5, 'daysRequired': 10, 'postedDate': '3 days ago'},
+    {'title': 'Electrical Installation', 'company': 'BuildRight Solutions', 'location': 'Powai', 'salary': '₹7,000 - ₹10,000', 'isRemote': false, 'posterImage': 'https://via.placeholder.com/150', 'description': 'Complete electrical wiring and installation for commercial space', 'workersNeeded': 4, 'daysRequired': 6, 'postedDate': '4 days ago'},
+    {'title': 'Tile and Flooring Work', 'company': 'Home Builders Inc', 'location': 'Thane', 'salary': '₹8,000 - ₹12,000', 'isRemote': false, 'posterImage': 'https://via.placeholder.com/150', 'imageUrl': 'https://picsum.photos/400/300?random=1', 'description': 'High-quality tile laying and floor finishing for villa construction', 'workersNeeded': 6, 'daysRequired': 7, 'postedDate': '1 day ago'},
+    {'title': 'Painting and Finishing', 'company': 'Quality Painters Ltd', 'location': 'Navi Mumbai', 'salary': '₹4,000 - ₹6,000', 'isRemote': false, 'posterImage': 'https://via.placeholder.com/150', 'description': 'Interior and exterior painting with premium finishes', 'workersNeeded': 3, 'daysRequired': 3, 'postedDate': '5 days ago'},
+  ];
+
+  Widget _buildWorkerCard(Map<String, dynamic> worker, AppearanceProvider appearance) {
+    return _WorkerCard(
+      worker: worker,
+      appearance: appearance,
+      onTap: () {
+        // Navigate to worker details
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => WorkerDetailsPage(worker: worker),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ContractorJobCard extends StatefulWidget {
+  final Map<String, dynamic> job;
+  final AppearanceProvider appearance;
+
+  const _ContractorJobCard({
+    required this.job,
+    required this.appearance,
+  });
+
+  @override
+  State<_ContractorJobCard> createState() => _ContractorJobCardState();
+}
+
+class _ContractorJobCardState extends State<_ContractorJobCard> {
+  bool isFavorite = false;
+  bool isLiked = false;
+  int likeCount = 245;
+  int commentCount = 12;
+  final TextEditingController _commentController = TextEditingController();
+  List<String> comments = ['अच्छा काम है!', 'मुझे यह काम दिलचस्प लगता है'];
+
+  @override
+  void initState() {
+    super.initState();
+    _checkIfFavorite();
   }
 
-  final List<Map<String, String>> _jobListings = [
-    // VIDEO CATEGORY
-    {'title': 'Senior Video Editor', 'company': 'CreativeStudio', 'location': 'New York, NY', 'type': 'Remote', 'salary': '\$70,000 - \$90,000'},
-    {'title': 'Video Production Specialist', 'company': 'MediaCorp', 'location': 'Los Angeles, CA', 'type': 'On-site', 'salary': '\$65,000 - \$80,000'},
-    {'title': 'Video Content Creator', 'company': 'FilmWorks', 'location': 'Toronto, ON', 'type': 'On-site', 'salary': '\$55,000 - \$75,000'},
-    {'title': 'Video Animator', 'company': 'AnimationPro', 'location': 'Vancouver, BC', 'type': 'Hybrid', 'salary': '\$60,000 - \$80,000'},
-    {'title': 'Video Editing Technician', 'company': 'MediaHub', 'location': 'Austin, TX', 'type': 'Remote', 'salary': '\$45,000 - \$65,000'},
-    
-    // DESIGN CATEGORY
-    {'title': 'Graphic Designer', 'company': 'DesignHub', 'location': 'San Francisco, CA', 'type': 'Remote', 'salary': '\$55,000 - \$75,000'},
-    {'title': 'UI/UX Designer', 'company': 'TechInnovate', 'location': 'Seattle, WA', 'type': 'Hybrid', 'salary': '\$60,000 - \$85,000'},
-    {'title': 'Graphic Design Specialist', 'company': 'CreativeWorks', 'location': 'Brooklyn, NY', 'type': 'Remote', 'salary': '\$50,000 - \$70,000'},
-    {'title': 'User Interface Designer', 'company': 'AppDesign', 'location': 'Berlin, Germany', 'type': 'Hybrid', 'salary': '\$65,000 - \$90,000'},
-    {'title': 'Motion Graphics Designer', 'company': 'StudioX', 'location': 'Vancouver, BC', 'type': 'Hybrid', 'salary': '\$60,000 - \$80,000'},
-    {'title': 'UX Research Designer', 'company': 'DesignLab', 'location': 'Chicago, IL', 'type': 'Remote', 'salary': '\$55,000 - \$80,000'},
-    
-    // TECH CATEGORY
-    {'title': 'Web Developer', 'company': 'CodeWorks', 'location': 'Austin, TX', 'type': 'Remote', 'salary': '\$70,000 - \$95,000'},
-    {'title': 'Backend Developer', 'company': 'ServerSide', 'location': 'Amsterdam, Netherlands', 'type': 'Remote', 'salary': '\$75,000 - \$105,000'},
-    {'title': 'Frontend Developer', 'company': 'WebStudio', 'location': 'London, UK', 'type': 'Hybrid', 'salary': '\$70,000 - \$95,000'},
-    {'title': 'Full Stack Developer', 'company': 'WebMasters', 'location': 'San Diego, CA', 'type': 'Hybrid', 'salary': '\$75,000 - \$105,000'},
-    {'title': 'Software Engineer', 'company': 'TechCorp', 'location': 'Mountain View, CA', 'type': 'Remote', 'salary': '\$90,000 - \$130,000'},
-    {'title': 'DevOps Engineer', 'company': 'CloudSystems', 'location': 'Denver, CO', 'type': 'Remote', 'salary': '\$75,000 - \$100,000'},
-    {'title': 'QA Automation Tester', 'company': 'TestPro', 'location': 'Portland, OR', 'type': 'Remote', 'salary': '\$55,000 - \$75,000'},
-    {'title': 'System Administrator', 'company': 'ITSolutions', 'location': 'Phoenix, AZ', 'type': 'Remote', 'salary': '\$55,000 - \$75,000'},
-    {'title': 'Machine Learning Engineer', 'company': 'AI Innovations', 'location': 'Palo Alto, CA', 'type': 'On-site', 'salary': '\$100,000 - \$150,000'},
-    {'title': 'Cloud Architect', 'company': 'CloudFirst', 'location': 'Singapore', 'type': 'Remote', 'salary': '\$95,000 - \$135,000'},
-    {'title': 'Senior Software Developer', 'company': 'InnovateTech', 'location': 'Boston, MA', 'type': 'Hybrid', 'salary': '\$95,000 - \$125,000'},
-    
-    // MARKETING CATEGORY
-    {'title': 'Marketing Specialist', 'company': 'BrandBoost', 'location': 'Dallas, TX', 'type': 'Hybrid', 'salary': '\$50,000 - \$70,000'},
-    {'title': 'Marketing Manager', 'company': 'GlobalBrand', 'location': 'Paris, France', 'type': 'Hybrid', 'salary': '\$70,000 - \$100,000'},
-    {'title': 'Social Media Specialist', 'company': 'DigitalMark', 'location': 'Los Angeles, CA', 'type': 'Remote', 'salary': '\$45,000 - \$65,000'},
-    {'title': 'SEO Specialist', 'company': 'SearchGenius', 'location': 'Austin, TX', 'type': 'Remote', 'salary': '\$55,000 - \$75,000'},
-    {'title': 'Brand Strategist', 'company': 'BrandLab', 'location': 'San Francisco, CA', 'type': 'On-site', 'salary': '\$70,000 - \$95,000'},
-    {'title': 'Digital Marketing Analyst', 'company': 'MarketPro', 'location': 'New York, NY', 'type': 'Hybrid', 'salary': '\$55,000 - \$75,000'},
-    {'title': 'Content Specialist', 'company': 'MediaPlus', 'location': 'Atlanta, GA', 'type': 'Remote', 'salary': '\$45,000 - \$65,000'},
-    
-    // FINANCE CATEGORY
-    {'title': 'Finance Manager', 'company': 'Wealth&Co', 'location': 'Hong Kong', 'type': 'On-site', 'salary': '\$85,000 - \$120,000'},
-    {'title': 'Accountant', 'company': 'NumbersFirst', 'location': 'Boston, MA', 'type': 'Hybrid', 'salary': '\$55,000 - \$75,000'},
-    {'title': 'Financial Analyst', 'company': 'FinanceHub', 'location': 'New York, NY', 'type': 'On-site', 'salary': '\$65,000 - \$90,000'},
-    {'title': 'Compliance Analyst', 'company': 'FinanceSecure', 'location': 'New York, NY', 'type': 'On-site', 'salary': '\$60,000 - \$80,000'},
-    {'title': 'Finance Director', 'company': 'CapitalGroup', 'location': 'Toronto, ON', 'type': 'On-site', 'salary': '\$95,000 - \$130,000'},
-    {'title': 'Investment Analyst', 'company': 'WealtTrack', 'location': 'Chicago, IL', 'type': 'Hybrid', 'salary': '\$70,000 - \$100,000'},
-    
-    // OTHER ROLES
-    {'title': 'Product Manager', 'company': 'InnovateCo', 'location': 'Boston, MA', 'type': 'On-site', 'salary': '\$80,000 - \$110,000'},
-    {'title': 'Data Scientist', 'company': 'DataDriven', 'location': 'Chicago, IL', 'type': 'Hybrid', 'salary': '\$85,000 - \$120,000'},
-    {'title': 'Project Manager', 'company': 'BuildRight', 'location': 'Miami, FL', 'type': 'On-site', 'salary': '\$70,000 - \$95,000'},
-    {'title': 'Business Analyst', 'company': 'ConsultPro', 'location': 'Washington, DC', 'type': 'On-site', 'salary': '\$65,000 - \$85,000'},
-  ];
-  Widget _buildJobCard(String title, String company, String location, String type, String salary, AppearanceProvider appearance) {
-    return _SwipeableJobCard(
-      title: title,
-      company: company,
-      location: location,
-      type: type,
-      salary: salary,
-      appearance: appearance,
-      onSwipe: (direction) {
-        final category = _getCategoryFromTitle(title);
-        print('========== SWIPE DETECTED ==========');
-        print('Card swiped: $direction');
-        print('Title: $title');
-        print('New Category: $category');
-        print('====================================');
-        setState(() {
-          _selectedCategory = category;
-        });
-      },
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _checkIfFavorite() async {
+    final prefs = await SharedPreferences.getInstance();
+    final favorites = prefs.getStringList('favorite_jobs') ?? [];
+    setState(() {
+      isFavorite = favorites.contains(widget.job['title']);
+    });
+  }
+
+  Future<void> _toggleFavorite() async {
+    final prefs = await SharedPreferences.getInstance();
+    final favorites = prefs.getStringList('favorite_jobs') ?? [];
+
+    final jobTitle = widget.job['title'] as String;
+    bool isAdded = false;
+
+    setState(() {
+      if (isFavorite) {
+        favorites.remove(jobTitle);
+      } else {
+        favorites.add(jobTitle);
+        isAdded = true;
+      }
+      isFavorite = !isFavorite;
+    });
+
+    await prefs.setStringList('favorite_jobs', favorites);
+
+    if (mounted) {
+      _showProfessionalNotification(
+        context,
+        isAdded ? 'Added to Favorites' : 'Removed from Favorites',
+        jobTitle,
+        isAdded,
+      );
+    }
+  }
+
+  void _showProfessionalNotification(
+    BuildContext context,
+    String title,
+    String jobTitle,
+    bool isAdded,
+  ) {
+    final overlay = Overlay.of(context);
+    late OverlayEntry overlayEntry;
+
+    overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        bottom: 80,
+        left: 16,
+        right: 16,
+        child: Material(
+          color: Colors.transparent,
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.0, end: 1.0),
+            duration: const Duration(milliseconds: 400),
+            builder: (context, value, child) {
+              return Transform.translate(
+                offset: Offset(0, 20 * (1 - value)),
+                child: Opacity(
+                  opacity: value,
+                  child: child,
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: Colors.grey[300]!,
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    isAdded ? Icons.favorite : Icons.favorite_outline,
+                    color: Colors.red,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      '$title • $jobTitle',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    overlay.insert(overlayEntry);
+
+    Future.delayed(const Duration(seconds: 2), () {
+      if (overlayEntry.mounted) {
+        overlayEntry.remove();
+      }
+    });
+  }
+
+  void _editComment(int index) {
+    _commentController.text = comments[index];
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: widget.appearance.brightness == Brightness.dark
+          ? const Color(0xFF2A2A2A)
+          : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      isScrollControlled: true,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: widget.appearance.brightness == Brightness.dark
+                        ? Colors.grey[600]
+                        : Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Edit Comment',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: widget.appearance.brightness == Brightness.dark
+                      ? Colors.white
+                      : Colors.black,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                decoration: BoxDecoration(
+                  color: widget.appearance.brightness == Brightness.dark
+                      ? const Color(0xFF1E1E1E)
+                      : Colors.grey[100],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: widget.appearance.brightness == Brightness.dark
+                        ? Colors.grey[700]!
+                        : Colors.grey[300]!,
+                    width: 1,
+                  ),
+                ),
+                child: TextField(
+                  controller: _commentController,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    hintText: 'Edit your comment...',
+                    hintStyle: TextStyle(
+                      color: widget.appearance.brightness == Brightness.dark
+                          ? Colors.grey[600]
+                          : Colors.grey,
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.all(12),
+                  ),
+                  style: TextStyle(
+                    color: widget.appearance.brightness == Brightness.dark
+                        ? Colors.white
+                        : Colors.black,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey[400],
+                      ),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        if (_commentController.text.isNotEmpty) {
+                          setState(() {
+                            comments[index] = _commentController.text;
+                          });
+                          _commentController.clear();
+                          Navigator.pop(context);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: widget.appearance.primaryColor,
+                      ),
+                      child: const Text(
+                        'Update',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _deleteComment(int index) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: widget.appearance.brightness == Brightness.dark
+            ? const Color(0xFF2A2A2A)
+            : Colors.white,
+        title: Text(
+          'Delete Comment',
+          style: TextStyle(
+            color: widget.appearance.brightness == Brightness.dark
+                ? Colors.white
+                : Colors.black,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to delete this comment?',
+          style: TextStyle(
+            color: widget.appearance.brightness == Brightness.dark
+                ? Colors.white70
+                : Colors.black87,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'No',
+              style: TextStyle(color: widget.appearance.primaryColor),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                comments.removeAt(index);
+                commentCount--;
+              });
+              Navigator.pop(context);
+            },
+            child: const Text('Yes', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showCommentDialog() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: widget.appearance.brightness == Brightness.dark
+          ? const Color(0xFF2A2A2A)
+          : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      isScrollControlled: true,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: SingleChildScrollView(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Handle bar
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: widget.appearance.brightness == Brightness.dark
+                          ? Colors.grey[600]
+                          : Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Comments ($commentCount)',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: widget.appearance.brightness == Brightness.dark
+                        ? Colors.white
+                        : Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                // Comments list - LinkedIn style
+                ...comments.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final comment = entry.value;
+                  final daysAgo = index == 0 ? '2d' : index == 1 ? '1d' : '3d';
+                  
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12.0),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Profile picture
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                widget.appearance.primaryColor.withValues(alpha: 0.6),
+                                widget.appearance.primaryColor.withValues(alpha: 0.2),
+                              ],
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.person,
+                            color: widget.appearance.primaryColor,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        
+                        // Comment content
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Username and time with 3-dot menu
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'User ${index + 1}',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: widget.appearance.brightness == Brightness.dark
+                                                ? Colors.white
+                                                : Colors.black,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          'Job Seeker',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: widget.appearance.brightness == Brightness.dark
+                                                ? Colors.grey[400]
+                                                : Colors.grey[600],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        daysAgo,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: widget.appearance.brightness == Brightness.dark
+                                              ? Colors.grey[500]
+                                              : Colors.grey[500],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      PopupMenuButton<String>(
+                                        itemBuilder: (BuildContext context) => [
+                                          PopupMenuItem<String>(
+                                            value: 'edit',
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(Icons.edit, size: 16, color: widget.appearance.primaryColor),
+                                                const SizedBox(width: 8),
+                                                const Text('Edit'),
+                                              ],
+                                            ),
+                                          ),
+                                          PopupMenuItem<String>(
+                                            value: 'delete',
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(Icons.delete, size: 16, color: Colors.red),
+                                                const SizedBox(width: 8),
+                                                const Text('Delete', style: TextStyle(color: Colors.red)),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                        onSelected: (value) {
+                                          if (value == 'edit') {
+                                            _editComment(index);
+                                          } else if (value == 'delete') {
+                                            _deleteComment(index);
+                                          }
+                                        },
+                                        icon: Icon(
+                                          Icons.more_vert,
+                                          size: 16,
+                                          color: widget.appearance.brightness == Brightness.dark
+                                              ? Colors.grey[500]
+                                              : Colors.grey[500],
+                                        ),
+                                        offset: const Offset(0, 24),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              
+                              // Comment text
+                              Text(
+                                comment,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: widget.appearance.brightness == Brightness.dark
+                                      ? Colors.white70
+                                      : Colors.black87,
+                                  height: 1.4,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              
+                              // Like and Reply buttons
+                              Row(
+                                children: [
+                                  Text(
+                                    'Like',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: widget.appearance.brightness == Brightness.dark
+                                          ? Colors.grey[400]
+                                          : Colors.grey[600],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Text(
+                                    'Reply',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: widget.appearance.brightness == Brightness.dark
+                                          ? Colors.grey[400]
+                                          : Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+                const SizedBox(height: 20),
+                
+                // Divider
+                Divider(
+                  color: widget.appearance.brightness == Brightness.dark
+                      ? Colors.grey[700]
+                      : Colors.grey[200],
+                ),
+                const SizedBox(height: 12),
+                
+                // Input field - Add comment
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    // User avatar
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            widget.appearance.primaryColor.withValues(alpha: 0.6),
+                            widget.appearance.primaryColor.withValues(alpha: 0.2),
+                          ],
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.person,
+                        color: widget.appearance.primaryColor,
+                        size: 18,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    
+                    // Input field
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: widget.appearance.brightness == Brightness.dark
+                              ? const Color(0xFF1E1E1E)
+                              : Colors.grey[100],
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: widget.appearance.brightness == Brightness.dark
+                                ? Colors.grey[700]!
+                                : Colors.grey[300]!,
+                            width: 1,
+                          ),
+                        ),
+                        child: TextField(
+                          controller: _commentController,
+                          maxLines: 1,
+                          decoration: InputDecoration(
+                            hintText: 'Write a comment...',
+                            hintStyle: TextStyle(
+                              color: widget.appearance.brightness == Brightness.dark
+                                  ? Colors.grey[600]
+                                  : Colors.grey,
+                              fontSize: 13,
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          ),
+                          style: TextStyle(
+                            color: widget.appearance.brightness == Brightness.dark
+                                ? Colors.white
+                                : Colors.black,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    
+                    // Post button
+                    GestureDetector(
+                      onTap: () {
+                        if (_commentController.text.isNotEmpty) {
+                          setState(() {
+                            comments.add(_commentController.text);
+                            commentCount++;
+                          });
+                          _commentController.clear();
+                          Navigator.pop(context);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: widget.appearance.primaryColor,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text(
+                          'Post',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => JobDetailsPage(
-              job: {
-                'title': title,
-                'company': company,
-                'location': location,
-                'jobType': type,
-                'salary': salary,
-              },
-            ),
+            builder: (context) => JobDetailsPage(job: widget.job),
           ),
         );
       },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 0.0, vertical: 2.0),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: widget.appearance.brightness == Brightness.dark
+              ? const Color(0xFF2A2A2A)
+              : Colors.white,
+        borderRadius: BorderRadius.circular(2),
+        border: Border.all(
+          color: widget.appearance.brightness == Brightness.dark
+              ? Colors.grey[800]!
+              : Colors.grey[200]!,
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Job Title and Company - TOP POSITION
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      widget.appearance.primaryColor.withValues(alpha: 0.4),
+                      widget.appearance.primaryColor.withValues(alpha: 0.1),
+                    ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: widget.appearance.primaryColor.withValues(alpha: 0.2),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  Icons.work,
+                  color: widget.appearance.primaryColor,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            widget.job['title'] as String,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: widget.appearance.brightness == Brightness.dark
+                                  ? Colors.white
+                                  : Colors.black87,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: _toggleFavorite,
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: isFavorite
+                                  ? Colors.red.withValues(alpha: 0.15)
+                                  : Colors.grey[200],
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Icon(
+                              isFavorite ? Icons.favorite : Icons.favorite_outline,
+                              color: isFavorite ? Colors.red : Colors.grey,
+                              size: 18,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      widget.job['company'] as String,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: widget.appearance.brightness == Brightness.dark
+                            ? Colors.grey[400]
+                            : Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Dummy/User Uploaded Image (Optional)
+          if (widget.job['imageUrl'] != null && (widget.job['imageUrl'] as String).isNotEmpty)
+            Column(
+              children: [
+                Container(
+                  width: double.infinity,
+                  height: 150,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    color: widget.appearance.brightness == Brightness.dark
+                        ? Colors.grey[800]
+                        : Colors.grey[200],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      widget.job['imageUrl'] as String,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: widget.appearance.primaryColor.withValues(alpha: 0.2),
+                          child: Icon(
+                            Icons.work,
+                            size: 64,
+                            color: widget.appearance.primaryColor.withValues(alpha: 0.5),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+            ),
+
+          // Location and Salary
+          Row(
+            children: [
+              Icon(Icons.location_on, size: 14, color: widget.appearance.primaryColor),
+              const SizedBox(width: 4),
+              Text(
+                widget.job['location'] as String,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: widget.appearance.brightness == Brightness.dark
+                      ? Colors.grey[300]
+                      : Colors.grey[600],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                '₹',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: widget.appearance.primaryColor,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                widget.job['salary'] as String,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: widget.appearance.primaryColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          // Workers Needed and Days
+          Row(
+            children: [
+              Icon(Icons.people, size: 14, color: widget.appearance.primaryColor),
+              const SizedBox(width: 4),
+              Text(
+                '${widget.job['workersNeeded']} workers needed',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: widget.appearance.brightness == Brightness.dark
+                      ? Colors.grey[300]
+                      : Colors.grey[600],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Icon(Icons.calendar_today, size: 14, color: widget.appearance.primaryColor),
+              const SizedBox(width: 4),
+              Text(
+                '${widget.job['daysRequired']} days',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: widget.appearance.brightness == Brightness.dark
+                      ? Colors.grey[300]
+                      : Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          // Divider
+          Divider(
+            color: widget.appearance.brightness == Brightness.dark
+                ? Colors.grey[700]
+                : Colors.grey[200],
+            thickness: 1,
+            height: 1,
+          ),
+          const SizedBox(height: 12),
+
+          // Social Actions Row
+          AbsorbPointer(
+            absorbing: false,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+              // Like Button
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    isLiked = !isLiked;
+                    likeCount = isLiked ? likeCount + 1 : likeCount - 1;
+                  });
+                },
+                borderRadius: BorderRadius.circular(8),
+                splashColor: Colors.blue.withValues(alpha: 0.3),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 8),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isLiked ? Icons.thumb_up : Icons.thumb_up_outlined,
+                        color: isLiked ? Colors.blue : Colors.grey,
+                        size: 19,
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        '$likeCount',
+                        style: TextStyle(
+                          fontSize: 9,
+                          color: widget.appearance.brightness == Brightness.dark
+                              ? Colors.grey[300]
+                              : Colors.grey[700],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Comment Button
+              InkWell(
+                onTap: () {
+                  _showCommentDialog();
+                },
+                borderRadius: BorderRadius.circular(8),
+                splashColor: widget.appearance.primaryColor.withValues(alpha: 0.3),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.comment,
+                        color: widget.appearance.primaryColor,
+                        size: 19,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Share Button
+              InkWell(
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('📤 Shared!'),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(8),
+                splashColor: widget.appearance.primaryColor.withValues(alpha: 0.3),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.share_outlined,
+                        color: widget.appearance.primaryColor,
+                        size: 19,
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        'Share',
+                        style: TextStyle(
+                          fontSize: 9,
+                          color: widget.appearance.brightness == Brightness.dark
+                              ? Colors.grey[300]
+                              : Colors.grey[700],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Chat Button
+              InkWell(
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('💬 Message sent!'),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(8),
+                splashColor: widget.appearance.primaryColor.withValues(alpha: 0.3),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.chat_bubble_outline,
+                        color: widget.appearance.primaryColor,
+                        size: 19,
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        'Chat',
+                        style: TextStyle(
+                          fontSize: 9,
+                          color: widget.appearance.brightness == Brightness.dark
+                              ? Colors.grey[300]
+                              : Colors.grey[700],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+            ),
+        ],
+      ),
+      ),
+    );
+  }
+}
+
+class _WorkerCard extends StatefulWidget {
+  final Map<String, dynamic> worker;
+  final AppearanceProvider appearance;
+  final VoidCallback onTap;
+
+  const _WorkerCard({
+    required this.worker,
+    required this.appearance,
+    required this.onTap,
+  });
+
+  @override
+  State<_WorkerCard> createState() => _WorkerCardState();
+}
+
+class _WorkerCardState extends State<_WorkerCard> {
+  bool isFavorite = false;
+  
+  @override
+  void initState() {
+    super.initState();
+    _checkIfFavorite();
+  }
+  
+  Future<void> _checkIfFavorite() async {
+    final prefs = await SharedPreferences.getInstance();
+    final favorites = prefs.getStringList('favorite_workers') ?? [];
+    setState(() {
+      isFavorite = favorites.contains(widget.worker['workerName']);
+    });
+  }
+  
+  Future<void> _toggleFavorite() async {
+    final prefs = await SharedPreferences.getInstance();
+    final favorites = prefs.getStringList('favorite_workers') ?? [];
+    
+    final workerName = widget.worker['workerName'] as String;
+    bool isAdded = false;
+    
+    setState(() {
+      if (isFavorite) {
+        favorites.remove(workerName);
+      } else {
+        favorites.add(workerName);
+        isAdded = true;
+      }
+      isFavorite = !isFavorite;
+    });
+    
+    await prefs.setStringList('favorite_workers', favorites);
+    
+    // Show professional notification
+    if (mounted) {
+      _showProfessionalNotification(
+        context,
+        isAdded 
+            ? 'Added to Favorites'
+            : 'Removed from Favorites',
+        workerName,
+        isAdded,
+      );
+    }
+  }
+
+  void _showProfessionalNotification(
+    BuildContext context,
+    String title,
+    String workerName,
+    bool isAdded,
+  ) {
+    final overlay = Overlay.of(context);
+    late OverlayEntry overlayEntry;
+
+    overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        bottom: 80,
+        left: 16,
+        right: 16,
+        child: Material(
+          color: Colors.transparent,
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0.0, end: 1.0),
+            duration: const Duration(milliseconds: 400),
+            builder: (context, value, child) {
+              return Transform.translate(
+                offset: Offset(0, 20 * (1 - value)),
+                child: Opacity(
+                  opacity: value,
+                  child: child,
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: isAdded ? Colors.grey[300]! : Colors.grey[300]!,
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    isAdded ? Icons.favorite : Icons.favorite_outline,
+                    color: Colors.red,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      '$title • $workerName',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    overlay.insert(overlayEntry);
+
+    // Auto-remove after 2 seconds
+    Future.delayed(const Duration(seconds: 2), () {
+      if (overlayEntry.mounted) {
+        overlayEntry.remove();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 0.0, vertical: 2.0),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: widget.appearance.brightness == Brightness.dark
+              ? const Color(0xFF2A2A2A)
+              : Colors.white,
+          borderRadius: BorderRadius.circular(2),
+          border: Border.all(
+            color: widget.appearance.brightness == Brightness.dark
+                ? Colors.grey[800]!
+                : Colors.grey[200]!,
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Worker Name, Type, and Like Button
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        widget.appearance.primaryColor.withValues(alpha: 0.4),
+                        widget.appearance.primaryColor.withValues(alpha: 0.1),
+                      ],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: widget.appearance.primaryColor.withValues(alpha: 0.2),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    Icons.person,
+                    color: widget.appearance.primaryColor,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.worker['workerName'] as String,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: widget.appearance.brightness == Brightness.dark
+                              ? Colors.white
+                              : Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.worker['workerType'] as String,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: widget.appearance.primaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                InkWell(
+                  onTap: _toggleFavorite,
+                  borderRadius: BorderRadius.circular(8),
+                  splashColor: Colors.red.withOpacity(0.3),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    child: Icon(
+                      isFavorite ? Icons.favorite : Icons.favorite_border,
+                      color: Colors.red,
+                      size: 19,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Location
+            Row(
+              children: [
+                Icon(Icons.location_on, size: 14, color: Colors.grey[600]),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    widget.worker['location'] as String,
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            
+            // Rating
+            Row(
+              children: [
+                Icon(Icons.star, color: Colors.amber, size: 16),
+                const SizedBox(width: 4),
+                Text(
+                  '${widget.worker['rating']} (${widget.worker['reviewCount']} reviews)',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: widget.appearance.brightness == Brightness.dark
+                        ? Colors.grey[300]
+                        : Colors.grey[800],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            
+            // Daily Rate (Prominent)
+            Row(
+              children: [
+                Text(
+                  '₹${widget.worker['dailyRate']}/day',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: widget.appearance.primaryColor,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  '₹${widget.worker['halfDayRate']}/half',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: widget.appearance.brightness == Brightness.dark
+                        ? Colors.grey[400]
+                        : Colors.grey[700],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            
+            // Skills
+            Text(
+              widget.worker['skills'] as String,
+              style: TextStyle(
+                fontSize: 12,
+                color: widget.appearance.brightness == Brightness.dark
+                    ? Colors.grey[400]
+                    : Colors.grey[600],
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 8),
+            
+            // Availability
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.green.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                widget.worker['availability'] as String,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.green,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Divider
+            Divider(
+              color: widget.appearance.brightness == Brightness.dark
+                  ? Colors.grey[700]
+                  : Colors.grey[200],
+              thickness: 1,
+              height: 1,
+            ),
+            const SizedBox(height: 12),
+            // Social Actions Row
+            AbsorbPointer(
+              absorbing: false,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  InkWell(
+                    onTap: () {},
+                    borderRadius: BorderRadius.circular(8),
+                    splashColor: Colors.blue.withValues(alpha: 0.3),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.thumb_up_outlined, size: 18, color: Colors.grey),
+                          const SizedBox(width: 3),
+                          Text(
+                            '0',
+                            style: TextStyle(fontSize: 9, color: Colors.grey[700]),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () {},
+                    borderRadius: BorderRadius.circular(8),
+                    splashColor: widget.appearance.primaryColor.withValues(alpha: 0.3),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                      child: Icon(Icons.comment, size: 18, color: widget.appearance.primaryColor),
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () {},
+                    borderRadius: BorderRadius.circular(8),
+                    splashColor: widget.appearance.primaryColor.withValues(alpha: 0.3),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.share_outlined, size: 18, color: widget.appearance.primaryColor),
+                          const SizedBox(width: 3),
+                          Text(
+                            'Share',
+                            style: TextStyle(fontSize: 9, color: Colors.grey[700]),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () {},
+                    borderRadius: BorderRadius.circular(8),
+                    splashColor: widget.appearance.primaryColor.withValues(alpha: 0.3),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.chat_bubble_outline, size: 18, color: widget.appearance.primaryColor),
+                          const SizedBox(width: 3),
+                          Text(
+                            'Chat',
+                            style: TextStyle(fontSize: 9, color: Colors.grey[700]),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -500,9 +2010,15 @@ class _SwipeableJobCardState extends State<_SwipeableJobCard> {
                   ? const Color(0xFF2A2A2A)
                   : Colors.white,
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: widget.appearance.brightness == Brightness.dark
+                    ? Colors.grey[800]!
+                    : Colors.grey[200]!,
+                width: 1,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
+                  color: Colors.black.withValues(alpha: 0.08),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -521,9 +2037,27 @@ class _SwipeableJobCardState extends State<_SwipeableJobCard> {
                       height: 60,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: widget.appearance.primaryColor.withOpacity(0.2),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            widget.appearance.primaryColor.withValues(alpha: 0.3),
+                            widget.appearance.primaryColor.withValues(alpha: 0.1),
+                          ],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: widget.appearance.primaryColor.withValues(alpha: 0.2),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                      child: Icon(Icons.business, color: widget.appearance.primaryColor, size: 30),
+                      child: Icon(
+                        Icons.business,
+                        color: widget.appearance.primaryColor,
+                        size: 30,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     // Company Info
@@ -533,7 +2067,9 @@ class _SwipeableJobCardState extends State<_SwipeableJobCard> {
                         children: [
                           Text(
                             widget.title,
-                            style: widget.appearance.getTitleStyle().copyWith(
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
                               color: widget.appearance.brightness == Brightness.dark
                                   ? Colors.white
                                   : Colors.black87,
@@ -542,22 +2078,33 @@ class _SwipeableJobCardState extends State<_SwipeableJobCard> {
                           const SizedBox(height: 4),
                           Text(
                             widget.company,
-                            style: widget.appearance.getBodyStyle().copyWith(
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
                               color: widget.appearance.brightness == Brightness.dark
                                   ? Colors.grey[400]
-                                  : Colors.grey[600],
+                                  : Colors.grey[700],
                             ),
                           ),
                         ],
                       ),
                     ),
                     // Bookmark icon
-                    Icon(
-                      Icons.bookmark_outline,
-                      color: widget.appearance.brightness == Brightness.dark
-                          ? Colors.grey[500]
-                          : Colors.grey[400],
-                      size: 24,
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: widget.appearance.brightness == Brightness.dark
+                            ? Colors.grey[800]
+                            : Colors.grey[100],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.bookmark_outline,
+                        color: widget.appearance.brightness == Brightness.dark
+                            ? Colors.grey[500]
+                            : Colors.grey[600],
+                        size: 20,
+                      ),
                     ),
                   ],
                 ),
@@ -586,7 +2133,7 @@ class _SwipeableJobCardState extends State<_SwipeableJobCard> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: widget.appearance.primaryColor.withOpacity(0.1),
+                        color: widget.appearance.primaryColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
@@ -623,7 +2170,7 @@ class _SwipeableJobCardState extends State<_SwipeableJobCard> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: widget.appearance.primaryColor.withOpacity(0.1),
+                            color: widget.appearance.primaryColor.withValues(alpha: 0.1),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
@@ -650,7 +2197,7 @@ class _SwipeableJobCardState extends State<_SwipeableJobCard> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: widget.appearance.primaryColor.withOpacity(0.1),
+                            color: widget.appearance.primaryColor.withValues(alpha: 0.1),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
@@ -713,29 +2260,44 @@ class _CategoryHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   final List<Map<String, dynamic>> categories = [
     {
-      'name': 'Video',
-      'icon': Icons.videocam,
-      'color': Colors.teal,
+      'name': 'Favorites',
+      'icon': Icons.favorite,
+      'color': Colors.red,
     },
     {
-      'name': 'Design',
-      'icon': Icons.brush,
+      'name': 'Carpenter',
+      'icon': Icons.construction,
       'color': Colors.orange,
     },
     {
-      'name': 'Tech',
-      'icon': Icons.computer,
+      'name': 'Plumber',
+      'icon': Icons.plumbing,
       'color': Colors.blue,
     },
     {
-      'name': 'Market',
-      'icon': Icons.trending_up,
+      'name': 'Tailor',
+      'icon': Icons.dry_cleaning,
+      'color': Colors.purple,
+    },
+    {
+      'name': 'Factory Worker',
+      'icon': Icons.factory,
+      'color': Colors.grey,
+    },
+    {
+      'name': 'Kitchen Helper',
+      'icon': Icons.restaurant,
       'color': Colors.green,
     },
     {
-      'name': 'Finance',
-      'icon': Icons.attach_money,
-      'color': Colors.purple,
+      'name': 'Messenger',
+      'icon': Icons.local_shipping,
+      'color': Colors.teal,
+    },
+    {
+      'name': 'Mason',
+      'icon': Icons.home_repair_service,
+      'color': Colors.brown,
     },
   ];
 
@@ -757,26 +2319,14 @@ class _CategoryHeaderDelegate extends SliverPersistentHeaderDelegate {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: selectedCategory == null
-                          ? appearance.primaryColor.withOpacity(0.2)
-                          : (appearance.brightness == Brightness.dark
-                              ? Colors.grey[800]
-                              : Colors.grey[200]),
-                    ),
-                    child: Icon(
-                      Icons.refresh,
-                      color: selectedCategory == null
-                          ? appearance.primaryColor
-                          : (appearance.brightness == Brightness.dark
-                              ? Colors.grey[500]
-                              : Colors.grey),
-                      size: 22,
-                    ),
+                  Icon(
+                    Icons.refresh,
+                    color: selectedCategory == null
+                        ? appearance.primaryColor
+                        : (appearance.brightness == Brightness.dark
+                            ? Colors.grey[600]
+                            : Colors.grey[400]),
+                    size: 32,
                   ),
                   const SizedBox(height: 2),
                   SizedBox(
@@ -807,26 +2357,14 @@ class _CategoryHeaderDelegate extends SliverPersistentHeaderDelegate {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isSelected
-                              ? appearance.primaryColor.withOpacity(0.2)
-                              : (appearance.brightness == Brightness.dark
-                                  ? Colors.grey[800]
-                                  : Colors.grey[200]),
-                        ),
-                        child: Icon(
-                          category['icon'],
-                          color: isSelected
-                              ? appearance.primaryColor
-                              : (appearance.brightness == Brightness.dark
-                                  ? Colors.grey[500]
-                                  : Colors.grey),
-                          size: 22,
-                        ),
+                      Icon(
+                        category['icon'],
+                        color: isSelected
+                            ? appearance.primaryColor
+                            : (appearance.brightness == Brightness.dark
+                                ? Colors.grey[600]
+                                : Colors.grey[400]),
+                        size: 32,
                       ),
                       const SizedBox(height: 2),
                       SizedBox(

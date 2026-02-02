@@ -367,7 +367,7 @@ Widget _buildJobsForCategory(Map<String, dynamic> category) {
       ListView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: EdgeInsets.zero,
         itemCount: jobs.length,
         itemBuilder: (context, index) => GestureDetector(
           onTap: () {
@@ -380,14 +380,18 @@ Widget _buildJobsForCategory(Map<String, dynamic> category) {
             );
           },
           child: Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.symmetric(horizontal: 0.0, vertical: 2.0),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(2),
+              border: Border.all(
+                color: Colors.grey[200]!,
+                width: 1,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withOpacity(0.08),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -396,14 +400,35 @@ Widget _buildJobsForCategory(Map<String, dynamic> category) {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Job Poster Image
+                // Title, Company, and Like Button (No Image)
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    CircleAvatar(
-                      radius: 24,
-                      backgroundImage: NetworkImage(
-                        jobs[index]['posterImage'] ??
-                            'https://via.placeholder.com/150', // Placeholder image
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.teal.withOpacity(0.4),
+                            Colors.teal.withOpacity(0.1),
+                          ],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.teal.withOpacity(0.2),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.work,
+                        color: Colors.teal,
+                        size: 20,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -414,8 +439,8 @@ Widget _buildJobsForCategory(Map<String, dynamic> category) {
                           Text(
                             jobs[index]['title'],
                             style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
                               color: Color(0xFF0D141C),
                             ),
                           ),
@@ -423,17 +448,29 @@ Widget _buildJobsForCategory(Map<String, dynamic> category) {
                           Text(
                             jobs[index]['company'],
                             style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[700],
+                              fontSize: 13,
+                              color: Colors.grey[600],
                             ),
                           ),
                         ],
                       ),
                     ),
-                    Icon(Icons.bookmark_border, color: Colors.grey[600]),
+                    InkWell(
+                      onTap: () {},
+                      borderRadius: BorderRadius.circular(8),
+                      splashColor: Colors.red.withOpacity(0.3),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        child: Icon(
+                          Icons.favorite_border,
+                          color: Colors.red,
+                          size: 19,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     Icon(Icons.location_on, size: 14, color: Colors.grey[600]),
@@ -442,65 +479,75 @@ Widget _buildJobsForCategory(Map<String, dynamic> category) {
                       jobs[index]['location'],
                       style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                     ),
-                    const SizedBox(width: 12),
-                    if (jobs[index]['isRemote'])
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.teal.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Text(
-                          'Remote',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.teal,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
                   ],
                 ),
                 const SizedBox(height: 12),
-                Text(
-                  'Salary: ${jobs[index]['salary']}',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.teal,
-                  ),
+                // Divider
+                Divider(
+                  color: Colors.grey[200],
+                  thickness: 1,
+                  height: 1,
                 ),
-                const SizedBox(height: 16),
-                // Action Buttons
+                const SizedBox(height: 12),
+                // Social Actions Row
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildActionButton(Icons.chat, 'Chat', () {
-                      // Add chat functionality
-                    }),
-                    _buildActionButton(Icons.phone, 'call', () {
-                      // Add SMS functionality
-                    }),
-                    ElevatedButton(
-                      onPressed: () {
-                        // Add apply functionality
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.teal,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 10,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                    InkWell(
+                      onTap: () {},
+                      borderRadius: BorderRadius.circular(8),
+                      splashColor: Colors.teal.withOpacity(0.3),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.thumb_up_outlined, size: 18, color: Colors.grey),
+                            const SizedBox(width: 3),
+                            Text('0', style: TextStyle(fontSize: 9, color: Colors.grey[700])),
+                          ],
                         ),
                       ),
-                      child: const Text(
-                        'Apply',
-                        style: TextStyle(fontSize: 14, color: Colors.white),
+                    ),
+                    InkWell(
+                      onTap: () {},
+                      borderRadius: BorderRadius.circular(8),
+                      splashColor: Colors.teal.withOpacity(0.3),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                        child: Icon(Icons.comment, size: 18, color: Colors.teal),
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () {},
+                      borderRadius: BorderRadius.circular(8),
+                      splashColor: Colors.teal.withOpacity(0.3),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.share_outlined, size: 18, color: Colors.teal),
+                            const SizedBox(width: 3),
+                            Text('Share', style: TextStyle(fontSize: 9, color: Colors.grey[700])),
+                          ],
+                        ),
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () {},
+                      borderRadius: BorderRadius.circular(8),
+                      splashColor: Colors.teal.withOpacity(0.3),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.chat_bubble_outline, size: 18, color: Colors.teal),
+                            const SizedBox(width: 3),
+                            Text('Chat', style: TextStyle(fontSize: 9, color: Colors.grey[700])),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -526,9 +573,9 @@ Widget _buildActionButton(IconData icon, String label, VoidCallback onPressed) {
             color: Colors.teal.withOpacity(0.1),
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, color: Colors.teal, size: 20),
+          child: Icon(icon, color: Colors.teal, size: 10),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
         Text(
           label,
           style: const TextStyle(
