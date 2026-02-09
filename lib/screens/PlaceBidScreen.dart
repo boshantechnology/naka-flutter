@@ -9,7 +9,7 @@ import '../providers/AppearanceProvider.dart';
 class PlaceBidScreen extends StatefulWidget {
   final Map<String, dynamic> job;
 
-  const PlaceBidScreen({Key? key, required this.job}) : super(key: key);
+  const PlaceBidScreen({super.key, required this.job});
 
   @override
   State<PlaceBidScreen> createState() => _PlaceBidScreenState();

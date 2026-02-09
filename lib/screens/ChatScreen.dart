@@ -30,11 +30,10 @@ class ChatScreen extends StatelessWidget {
         ),
         title: Row(
           children: [
-            CircleAvatar(
+            const CircleAvatar(
               radius: 20,
-              backgroundImage: NetworkImage(
-                'https://i.postimg.cc/zDLDCwp7/image2.jpg',
-              ),
+              backgroundColor: Colors.blue,
+              child: Icon(Icons.person, color: Colors.white),
             ),
             const SizedBox(width: 8),
             Column(

@@ -1,0 +1,1774 @@
+import 'package:flutter/material.dart';
+import 'package:naka/config/app_colors.dart';
+import 'package:naka/providers/AppearanceProvider.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class InsightsScreen extends StatefulWidget {
+  const InsightsScreen({super.key});
+
+  @override
+  State<InsightsScreen> createState() => _InsightsScreenState();
+}
+
+class _InsightsScreenState extends State<InsightsScreen> with TickerProviderStateMixin {
+  String? _userRole;
+  bool _showOnlyAvailable = false;
+  bool _isOnDuty = true; // Worker duty status
+  Map<int, bool> _disabledJobPosts = {}; // Track disabled job posts for contractors
+  late TabController _tabController;
+  
+  // Collapsible section states
+  Map<String, bool> _expandedSections = {
+    'metrics': true,
+    'status': true,
+    'activity': false,
+    'recommendations': true,
+    'jobposts': true,
+    'applications': false,
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserRole();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadUserRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _userRole = prefs.getString('user_role') ?? 'Worker';
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AppearanceProvider>(
+      builder: (context, appearance, _) {
+        return Scaffold(
+          backgroundColor: appearance.brightness == Brightness.dark
+              ? const Color(0xFF1E1E1E)
+              : const Color(0xFFF8F9FA),
+          appBar: AppBar(
+            backgroundColor: appearance.brightness == Brightness.dark
+                ? const Color(0xFF2A2A2A)
+                : Colors.white,
+            elevation: 0,
+            centerTitle: true,
+            title: Text(
+              'Insights',
+              style: TextStyle(
+                color: appearance.brightness == Brightness.dark
+                    ? Colors.white
+                    : AppColors.text,
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+              ),
+            ),
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(60),
+              child: _buildTabBar(appearance),
+            ),
+          ),
+          body: TabBarView(
+            controller: _tabController,
+            children: [
+              _userRole == 'Worker'
+                  ? _buildWorkerDashboard(appearance)
+                  : _buildContractorDashboard(appearance),
+              _buildDetailedMetrics(appearance),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTabBar(AppearanceProvider appearance) {
+    return Container(
+      color: appearance.brightness == Brightness.dark
+          ? const Color(0xFF2A2A2A)
+          : Colors.white,
+      child: TabBar(
+        controller: _tabController,
+        labelColor: appearance.primaryColor,
+        unselectedLabelColor: appearance.brightness == Brightness.dark
+            ? Colors.grey[500]
+            : Colors.grey[600],
+        labelStyle: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
+        indicator: UnderlineTabIndicator(
+          borderSide: BorderSide(
+            color: appearance.primaryColor,
+            width: 3,
+          ),
+          insets: const EdgeInsets.symmetric(horizontal: 16),
+        ),
+        tabs: [
+          Tab(
+            text: _userRole == 'Worker' ? 'My Profile' : 'Job Posts',
+          ),
+          const Tab(text: 'Metrics'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWorkerDashboard(AppearanceProvider appearance) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHeaderCard(appearance),
+          const SizedBox(height: 16),
+          
+          // Status Section
+          _buildCollapsibleSection(
+            appearance,
+            'status',
+            'Current Status',
+            Icons.check_circle_outline,
+            _buildStatusCard(appearance),
+          ),
+          const SizedBox(height: 12),
+          
+          // Recommendations Section
+          _buildCollapsibleSection(
+            appearance,
+            'recommendations',
+            'Recommended for You',
+            Icons.stars_outlined,
+            _buildRecommendationsPreview(appearance),
+          ),
+          const SizedBox(height: 12),
+          
+          // Activity Timeline
+          _buildCollapsibleSection(
+            appearance,
+            'activity',
+            'Recent Activity',
+            Icons.history,
+            _buildActivityPreview(appearance),
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContractorDashboard(AppearanceProvider appearance) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHeaderCard(appearance),
+          const SizedBox(height: 16),
+          
+          // Active Job Posts Section
+          _buildCollapsibleSection(
+            appearance,
+            'jobposts',
+            'Active Job Posts',
+            Icons.work_outline,
+            _buildActiveJobPostsPreview(appearance),
+          ),
+          const SizedBox(height: 12),
+          
+          // Applications Section
+          _buildCollapsibleSection(
+            appearance,
+            'applications',
+            'Applications Received',
+            Icons.inbox_outlined,
+            _buildApplicationsPreview(appearance),
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCollapsibleSection(
+    AppearanceProvider appearance,
+    String sectionKey,
+    String title,
+    IconData icon,
+    Widget content,
+  ) {
+    final isExpanded = _expandedSections[sectionKey] ?? true;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: appearance.brightness == Brightness.dark
+            ? const Color(0xFF2A2A2A)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: appearance.brightness == Brightness.dark
+              ? Colors.grey[800]!
+              : Colors.grey[200]!,
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Header
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _expandedSections[sectionKey] = !(isExpanded);
+              });
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: appearance.primaryColor.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      icon,
+                      size: 18,
+                      color: appearance.primaryColor,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: appearance.brightness == Brightness.dark
+                            ? Colors.white
+                            : Colors.black87,
+                      ),
+                    ),
+                  ),
+                  AnimatedRotation(
+                    turns: isExpanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(
+                      Icons.expand_more,
+                      color: appearance.brightness == Brightness.dark
+                          ? Colors.grey[500]
+                          : Colors.grey[400],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          
+          // Divider
+          Divider(
+            color: appearance.brightness == Brightness.dark
+                ? Colors.grey[800]
+                : Colors.grey[200],
+            height: 1,
+            thickness: 1,
+          ),
+          
+          // Content
+          if (isExpanded)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: content,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailedMetrics(AppearanceProvider appearance) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionTitle('Performance Metrics', appearance),
+          const SizedBox(height: 12),
+          if (_userRole == 'Worker') ...[
+            Row(
+              children: [
+                Expanded(
+                  child: _buildMetricCard(
+                    '145',
+                    'Profile Views',
+                    Icons.visibility,
+                    Colors.blue,
+                    appearance,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildMetricCard(
+                    '28',
+                    'Reach Outs',
+                    Icons.mail_outline,
+                    Colors.purple,
+                    appearance,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildMetricCard(
+                    '12',
+                    'Comments',
+                    Icons.comment,
+                    Colors.green,
+                    appearance,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildMetricCard(
+                    '45',
+                    'Likes',
+                    Icons.favorite,
+                    Colors.red,
+                    appearance,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            _buildSectionTitle('Rating & Reviews', appearance),
+            const SizedBox(height: 12),
+            _buildRatingCard(appearance),
+          ] else ...[
+            Row(
+              children: [
+                Expanded(
+                  child: _buildMetricCard(
+                    '186',
+                    'Views',
+                    Icons.visibility,
+                    Colors.blue,
+                    appearance,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildMetricCard(
+                    '42',
+                    'Likes',
+                    Icons.favorite,
+                    Colors.red,
+                    appearance,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildMetricCard(
+                    '18',
+                    'Comments',
+                    Icons.comment,
+                    Colors.green,
+                    appearance,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildMetricCard(
+                    '9',
+                    'Shares',
+                    Icons.share,
+                    Colors.orange,
+                    appearance,
+                  ),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecommendationsPreview(AppearanceProvider appearance) {
+    return Column(
+      children: [
+        _buildRecommendedWorkerCard(
+          appearance,
+          'Rajesh Kumar',
+          'Carpenter',
+          '4.8★ (127 reviews)',
+          true,
+          'Available for work',
+          '2 hours ago',
+        ),
+        const SizedBox(height: 10),
+        _buildRecommendedWorkerCard(
+          appearance,
+          'Arjun Patel',
+          'Carpenter',
+          '4.9★ (152 reviews)',
+          true,
+          'Available for work',
+          '1 hour ago',
+        ),
+        const SizedBox(height: 10),
+        Center(
+          child: TextButton(
+            onPressed: () {},
+            child: Text(
+              'View All Workers',
+              style: TextStyle(
+                color: appearance.primaryColor,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActivityPreview(AppearanceProvider appearance) {
+    return Column(
+      children: [
+        _buildActivityCard(appearance, 'Profile viewed', 'Ethan Johnson', '2 hours ago'),
+        const SizedBox(height: 8),
+        _buildActivityCard(appearance, 'Message received', 'Sarah Davis', '4 hours ago'),
+        const SizedBox(height: 8),
+        _buildActivityCard(appearance, 'Liked your profile', 'Mike Wilson', '1 day ago'),
+        const SizedBox(height: 10),
+        Center(
+          child: TextButton(
+            onPressed: () {},
+            child: Text(
+              'View All Activity',
+              style: TextStyle(
+                color: appearance.primaryColor,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActiveJobPostsPreview(AppearanceProvider appearance) {
+    return Column(
+      children: [
+        _buildJobPostCard(
+          appearance,
+          0,
+          'Need Carpenter for Kitchen Renovation',
+          'Andheri West',
+          '₹5,000 - ₹8,000',
+          2,
+          5,
+        ),
+        const SizedBox(height: 10),
+        _buildJobPostCard(
+          appearance,
+          1,
+          'Plumbing Work - New Apartment',
+          'Bandra',
+          '₹6,000 - ₹9,000',
+          3,
+          4,
+        ),
+        const SizedBox(height: 10),
+        Center(
+          child: TextButton(
+            onPressed: () {},
+            child: Text(
+              'View All Job Posts',
+              style: TextStyle(
+                color: appearance.primaryColor,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildApplicationsPreview(AppearanceProvider appearance) {
+    return Column(
+      children: [
+        _buildApplicationCard(
+          appearance,
+          'Rajesh Kumar',
+          'Carpenter',
+          '4.8★ (127 reviews)',
+          '2 hours ago',
+        ),
+        const SizedBox(height: 10),
+        _buildApplicationCard(
+          appearance,
+          'Vikram Singh',
+          'Carpenter',
+          '4.6★ (95 reviews)',
+          '5 hours ago',
+        ),
+        const SizedBox(height: 10),
+        Center(
+          child: TextButton(
+            onPressed: () {},
+            child: Text(
+              'View All Applications',
+              style: TextStyle(
+                color: appearance.primaryColor,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeaderCard(AppearanceProvider appearance) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: appearance.brightness == Brightness.dark
+            ? const Color(0xFF2A2A2A)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: appearance.primaryColor.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.analytics,
+              color: appearance.primaryColor,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Your Performance',
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
+                    color: appearance.brightness == Brightness.dark
+                        ? Colors.white
+                        : Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Track your engagement and growth',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: appearance.brightness == Brightness.dark
+                        ? Colors.grey[400]
+                        : Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWorkerInsights(AppearanceProvider appearance) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Current Status Section
+        _buildSectionTitle('Current Status', appearance),
+        const SizedBox(height: 12),
+        _buildStatusCard(appearance),
+        const SizedBox(height: 18),
+        
+        // Profile Metrics Section
+        _buildSectionTitle('Profile Metrics', appearance),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildMetricCard(
+                '145',
+                'Profile Views',
+                Icons.visibility,
+                Colors.blue,
+                appearance,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildMetricCard(
+                '28',
+                'Reach Outs',
+                Icons.mail_outline,
+                Colors.purple,
+                appearance,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildMetricCard(
+                '12',
+                'Comments',
+                Icons.comment,
+                Colors.green,
+                appearance,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildMetricCard(
+                '45',
+                'Likes',
+                Icons.favorite,
+                Colors.red,
+                appearance,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        _buildSectionTitle('Rating & Reviews', appearance),
+        const SizedBox(height: 12),
+        _buildRatingCard(appearance),
+        const SizedBox(height: 18),
+        _buildSectionTitle('Activity Timeline', appearance),
+        const SizedBox(height: 12),
+        _buildActivityCard(appearance, 'Profile viewed', 'Ethan Johnson', '2 hours ago'),
+        const SizedBox(height: 8),
+        _buildActivityCard(appearance, 'Message received', 'Sarah Davis', '4 hours ago'),
+        const SizedBox(height: 8),
+        _buildActivityCard(appearance, 'Liked your profile', 'Mike Wilson', '1 day ago'),
+      ],
+    );
+  }
+
+  Widget _buildContractorInsights(AppearanceProvider appearance) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle('Job Post Metrics', appearance),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildMetricCard(
+                '186',
+                'Views',
+                Icons.visibility,
+                Colors.blue,
+                appearance,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildMetricCard(
+                '42',
+                'Likes',
+                Icons.favorite,
+                Colors.red,
+                appearance,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildMetricCard(
+                '18',
+                'Comments',
+                Icons.comment,
+                Colors.green,
+                appearance,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildMetricCard(
+                '9',
+                'Shares',
+                Icons.share,
+                Colors.orange,
+                appearance,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        
+        // Recommended Workers Section
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildSectionTitle('Recommended Workers', appearance),
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _showOnlyAvailable = !_showOnlyAvailable;
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _showOnlyAvailable
+                      ? appearance.primaryColor.withOpacity(0.2)
+                      : appearance.brightness == Brightness.dark
+                          ? Colors.grey[800]
+                          : Colors.grey[200],
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.filter_list,
+                      size: 12,
+                      color: _showOnlyAvailable
+                          ? appearance.primaryColor
+                          : Colors.grey,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _showOnlyAvailable ? 'Available' : 'All',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: _showOnlyAvailable
+                            ? appearance.primaryColor
+                            : appearance.brightness == Brightness.dark
+                                ? Colors.grey[400]
+                                : Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        
+        // Recommended Worker Cards with Availability Status
+        _buildRecommendedWorkerCard(
+          appearance,
+          'Rajesh Kumar',
+          'Carpenter',
+          '4.8★ (127 reviews)',
+          true, // isAvailable
+          'Available for work',
+          '2 hours ago',
+        ),
+        const SizedBox(height: 10),
+        _buildRecommendedWorkerCard(
+          appearance,
+          'Vikram Singh',
+          'Carpenter',
+          '4.6★ (95 reviews)',
+          false, // isBooked
+          'Booked until Feb 10',
+          '5 hours ago',
+        ),
+        const SizedBox(height: 10),
+        _buildRecommendedWorkerCard(
+          appearance,
+          'Arjun Patel',
+          'Carpenter',
+          '4.9★ (152 reviews)',
+          true, // isAvailable
+          'Available for work',
+          '1 hour ago',
+        ),
+        const SizedBox(height: 18),
+        
+        _buildSectionTitle('Active Job Posts', appearance),
+        const SizedBox(height: 12),
+        _buildJobPostCard(
+          appearance,
+          0,
+          'Need Carpenter for Kitchen Renovation',
+          'Andheri West',
+          '₹5,000 - ₹8,000',
+          2,
+          5,
+        ),
+        const SizedBox(height: 10),
+        _buildJobPostCard(
+          appearance,
+          1,
+          'Plumbing Work - New Apartment',
+          'Bandra',
+          '₹6,000 - ₹9,000',
+          3,
+          4,
+        ),
+        const SizedBox(height: 18),
+        
+        _buildSectionTitle('Applications', appearance),
+        const SizedBox(height: 12),
+        _buildApplicationCard(
+          appearance,
+          'Rajesh Kumar',
+          'Carpenter',
+          '4.8★ (127 reviews)',
+          '2 hours ago',
+        ),
+        const SizedBox(height: 10),
+        _buildApplicationCard(
+          appearance,
+          'Vikram Singh',
+          'Carpenter',
+          '4.6★ (95 reviews)',
+          '5 hours ago',
+        ),
+        const SizedBox(height: 18),
+        _buildSectionTitle('Recent Activity', appearance),
+        const SizedBox(height: 12),
+        _buildActivityCard(appearance, 'Job post viewed', '156 people', '3 hours ago'),
+        const SizedBox(height: 8),
+        _buildActivityCard(appearance, 'New application', 'Rajesh Kumar', '2 hours ago'),
+        const SizedBox(height: 8),
+        _buildActivityCard(appearance, 'Post shared', '9 times', '1 day ago'),
+      ],
+    );
+  }
+
+  Widget _buildSectionTitle(String title, AppearanceProvider appearance) {
+    return Text(
+      title,
+      style: TextStyle(
+        fontSize: 12.5,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.4,
+        color: appearance.brightness == Brightness.dark
+            ? Colors.grey[300]
+            : Colors.grey[600],
+      ),
+    );
+  }
+
+  Widget _buildMetricCard(
+    String value,
+    String label,
+    IconData icon,
+    Color color,
+    AppearanceProvider appearance,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: appearance.brightness == Brightness.dark
+            ? const Color(0xFF2A2A2A)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: appearance.brightness == Brightness.dark
+                  ? Colors.white
+                  : Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: appearance.brightness == Brightness.dark
+                  ? Colors.grey[400]
+                  : Colors.grey[600],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRatingCard(AppearanceProvider appearance) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: appearance.brightness == Brightness.dark
+            ? const Color(0xFF2A2A2A)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: Colors.amber.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    '4.8',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.amber[700],
+                    ),
+                  ),
+                  Icon(Icons.star, color: Colors.amber, size: 14),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Based on 127 reviews',
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                    color: appearance.brightness == Brightness.dark
+                        ? Colors.white
+                        : Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    ...List.generate(5, (index) {
+                      return Icon(
+                        Icons.star,
+                        color: Colors.amber,
+                        size: 14,
+                      );
+                    }),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: 0.96,
+                    minHeight: 4,
+                    backgroundColor: Colors.grey[300],
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.amber),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActivityCard(
+    AppearanceProvider appearance,
+    String action,
+    String details,
+    String time,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: appearance.brightness == Brightness.dark
+            ? const Color(0xFF2A2A2A)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: appearance.primaryColor.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              Icons.access_time,
+              color: appearance.primaryColor,
+              size: 16,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  action,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: appearance.brightness == Brightness.dark
+                        ? Colors.white
+                        : Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  details,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: appearance.brightness == Brightness.dark
+                        ? Colors.grey[400]
+                        : Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            time,
+            style: TextStyle(
+              fontSize: 10,
+              color: appearance.brightness == Brightness.dark
+                  ? Colors.grey[500]
+                  : Colors.grey[400],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildApplicationCard(
+    AppearanceProvider appearance,
+    String name,
+    String title,
+    String rating,
+    String time,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: appearance.brightness == Brightness.dark
+            ? const Color(0xFF2A2A2A)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  appearance.primaryColor.withValues(alpha: 0.4),
+                  appearance.primaryColor.withValues(alpha: 0.1),
+                ],
+              ),
+            ),
+            child: Icon(
+              Icons.person,
+              color: appearance.primaryColor,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: appearance.brightness == Brightness.dark
+                        ? Colors.white
+                        : Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: appearance.primaryColor,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      rating,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: appearance.brightness == Brightness.dark
+                            ? Colors.grey[400]
+                            : Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Icon(
+                Icons.chevron_right,
+                color: appearance.brightness == Brightness.dark
+                    ? Colors.grey[600]
+                    : Colors.grey[400],
+                size: 20,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                time,
+                style: TextStyle(
+                  fontSize: 9,
+                  color: appearance.brightness == Brightness.dark
+                      ? Colors.grey[500]
+                      : Colors.grey[400],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusCard(AppearanceProvider appearance) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: appearance.brightness == Brightness.dark
+            ? const Color(0xFF2A2A2A)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: appearance.brightness == Brightness.dark
+              ? Colors.grey[800]!
+              : Colors.grey[200]!,
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: _isOnDuty ? Colors.green.withOpacity(0.15) : Colors.red.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              _isOnDuty ? Icons.check_circle : Icons.cancel,
+              color: _isOnDuty ? Colors.green : Colors.red,
+              size: 28,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _isOnDuty ? 'On Duty' : 'Off Duty',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: appearance.brightness == Brightness.dark
+                        ? Colors.white
+                        : Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _isOnDuty ? 'Ready to receive job requests' : 'Not accepting new requests',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: appearance.brightness == Brightness.dark
+                        ? Colors.grey[300]
+                        : Colors.grey[700],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Toggle Switch
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _isOnDuty = !_isOnDuty;
+              });
+            },
+            child: Container(
+              width: 54,
+              height: 32,
+              decoration: BoxDecoration(
+                color: _isOnDuty ? Colors.green.withOpacity(0.3) : Colors.grey.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Stack(
+                children: [
+                  AnimatedAlign(
+                    alignment: _isOnDuty ? Alignment.centerRight : Alignment.centerLeft,
+                    duration: const Duration(milliseconds: 200),
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      margin: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: _isOnDuty ? Colors.green : Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        _isOnDuty ? Icons.check : Icons.close,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecommendedWorkerCard(
+    AppearanceProvider appearance,
+    String workerName,
+    String workerType,
+    String rating,
+    bool isAvailable,
+    String availabilityText,
+    String appliedTime,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: appearance.brightness == Brightness.dark
+            ? const Color(0xFF2A2A2A)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: appearance.brightness == Brightness.dark
+              ? Colors.grey[800]!
+              : Colors.grey[200]!,
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  appearance.primaryColor.withOpacity(0.7),
+                  appearance.primaryColor,
+                ],
+              ),
+            ),
+            child: Center(
+              child: Text(
+                workerName.substring(0, 1),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            workerName,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: appearance.brightness == Brightness.dark
+                                  ? Colors.white
+                                  : Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            workerType,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: appearance.brightness == Brightness.dark
+                                  ? Colors.grey[400]
+                                  : Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isAvailable
+                            ? Colors.green.withOpacity(0.15)
+                            : Colors.amber.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isAvailable
+                                ? Icons.check_circle
+                                : Icons.schedule,
+                            size: 10,
+                            color: isAvailable
+                                ? Colors.green
+                                : Colors.amber[700],
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            isAvailable ? 'Available' : 'Booked',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600,
+                              color: isAvailable
+                                  ? Colors.green
+                                  : Colors.amber[700],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      rating,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: appearance.brightness == Brightness.dark
+                            ? Colors.grey[400]
+                            : Colors.grey[600],
+                      ),
+                    ),
+                    Text(
+                      availabilityText,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: appearance.brightness == Brightness.dark
+                            ? Colors.grey[400]
+                            : Colors.grey[600],
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Icon(
+            Icons.chevron_right,
+            color: appearance.brightness == Brightness.dark
+                ? Colors.grey[600]
+                : Colors.grey[400],
+            size: 20,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildJobPostCard(
+    AppearanceProvider appearance,
+    int postId,
+    String title,
+    String location,
+    String salary,
+    int workersNeeded,
+    int daysRequired,
+  ) {
+    final isDisabled = _disabledJobPosts[postId] ?? false;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: appearance.brightness == Brightness.dark
+            ? const Color(0xFF2A2A2A)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDisabled
+              ? Colors.red[300]!
+              : (appearance.brightness == Brightness.dark
+                  ? Colors.grey[800]!
+                  : Colors.grey[200]!),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: appearance.brightness == Brightness.dark
+                            ? Colors.white
+                            : Colors.black87,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.location_on, size: 12, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text(
+                          location,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: appearance.brightness == Brightness.dark
+                                ? Colors.grey[400]
+                                : Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      salary,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: appearance.primaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (isDisabled)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    'Disabled',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.red,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Icon(Icons.people, size: 12, color: Colors.grey),
+              const SizedBox(width: 4),
+              Text(
+                '$workersNeeded workers needed',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: appearance.brightness == Brightness.dark
+                      ? Colors.grey[400]
+                      : Colors.grey[600],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Icon(Icons.calendar_today, size: 12, color: Colors.grey),
+              const SizedBox(width: 4),
+              Text(
+                '$daysRequired days',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: appearance.brightness == Brightness.dark
+                      ? Colors.grey[400]
+                      : Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Action Buttons
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: isDisabled ? null : () {
+                    // Show disable confirmation dialog
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        backgroundColor: appearance.brightness == Brightness.dark
+                            ? const Color(0xFF2A2A2A)
+                            : Colors.white,
+                        title: Text(
+                          'Disable Job Post?',
+                          style: TextStyle(
+                            color: appearance.brightness == Brightness.dark
+                                ? Colors.white
+                                : Colors.black,
+                          ),
+                        ),
+                        content: Text(
+                          'Are you sure you want to disable this job post? You can re-enable it later.',
+                          style: TextStyle(
+                            color: appearance.brightness == Brightness.dark
+                                ? Colors.grey[300]
+                                : Colors.grey[700],
+                          ),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: Text(
+                              'Cancel',
+                              style: TextStyle(
+                                color: appearance.primaryColor,
+                              ),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              setState(() {
+                                _disabledJobPosts[postId] = true;
+                              });
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Job post "$title" has been disabled'),
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            },
+                            child: const Text(
+                              'Disable',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isDisabled
+                          ? Colors.red.withOpacity(0.15)
+                          : appearance.primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: Text(
+                        isDisabled ? 'Disabled' : 'Disable',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: isDisabled ? Colors.red : appearance.primaryColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Viewing applications for "$title"'),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: appearance.primaryColor.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: Text(
+                        'View Apps',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: appearance.primaryColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}

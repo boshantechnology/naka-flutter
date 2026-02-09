@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:naka/config/app_colors.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:naka/assets/svg_assets.dart';
 
@@ -52,141 +51,168 @@ class _IntroScreenState extends State<IntroScreen> {
     ];
 
     return Scaffold(
-      backgroundColor: AppColors.bgLight,
-      body: PageView.builder(
-        controller: _pageController,
-        onPageChanged: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        itemCount: introItems.length,
-        itemBuilder: (context, index) {
-          final item = introItems[index];
-          return Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Top Section
-              Column(
+      backgroundColor: Colors.white,
+      body: Stack(
+        children: [
+          PageView(
+            controller: _pageController,
+            onPageChanged: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            children: introItems.map((item) {
+              final isFirstPage = introItems.indexOf(item) == 0;
+              return SingleChildScrollView(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Top Section
+                    Column(
+                      children: [
+                        const SizedBox(height: 60),
+                        // Image - Use real image for first page, SVG for others
+                        Container(
+                          margin: const EdgeInsets.all(16.0),
+                          height: 240,
+                          width: double.infinity,
+                          child: isFirstPage
+                              ? Image.asset(
+                                  'lib/assets/images/1.jpg',
+                                  fit: BoxFit.contain,
+                                )
+                              : SvgPicture.string(
+                                  item['svg'],
+                                  fit: BoxFit.contain,
+                                ),
+                        ),
+                        const SizedBox(height: 40),
+                        // Title Section
+                        Text(
+                          item['title'],
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        // Subtitle Section
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                          child: Text(
+                            item['subtitle'],
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: Color(0xFF5B7C99),
+                              height: 1.6,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 40),
+                        // Dots Indicator
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: List.generate(
+                            introItems.length,
+                            (dotIndex) => Container(
+                              height: 10,
+                              width: 10,
+                              margin: const EdgeInsets.symmetric(horizontal: 6),
+                              decoration: BoxDecoration(
+                                color: dotIndex == _currentIndex
+                                    ? const Color(0xFF00A8CC)
+                                    : const Color(0xFFDDDDDD),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 60),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+          // Fixed Bottom Section
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Color.fromARGB(25, 0, 0, 0),
+                    blurRadius: 8,
+                    offset: Offset(0, -2),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
+              child: Column(
                 children: [
-                  const SizedBox(height: 40),
-                  // SVG Image
-                  Container(
-                    margin: const EdgeInsets.all(16.0),
-                    height: 200,
-                    width: 200,
-                    child: SvgPicture.string(
-                      item['svg'],
-                      fit: BoxFit.contain,
+                  ElevatedButton(
+                    onPressed: () {
+                      if (_currentIndex == introItems.length - 1) {
+                        Navigator.pushNamedAndRemoveUntil(
+                          context,
+                          '/login',
+                          (route) => false,
+                        );
+                      } else {
+                        _pageController.nextPage(
+                          duration: const Duration(milliseconds: 400),
+                          curve: Curves.easeInOut,
+                        );
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF00A8CC),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      minimumSize: const Size(double.infinity, 56),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  // Title Section
-                  Text(
-                    item['title'],
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.text,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  // Subtitle Section
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
                     child: Text(
-                      item['subtitle'],
-                      textAlign: TextAlign.center,
+                      _currentIndex == introItems.length - 1 ? 'Get Started' : 'Next',
                       style: const TextStyle(
-                        fontSize: 15,
-                        color: AppColors.textSecondary,
-                        height: 1.5,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  // Dots Indicator
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(
-                      introItems.length,
-                      (dotIndex) => Container(
-                        height: 8,
-                        width: 8,
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        decoration: BoxDecoration(
-                          color: dotIndex == _currentIndex
-                              ? AppColors.primary
-                              : AppColors.bgBorder,
-                          shape: BoxShape.circle,
-                        ),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pushNamedAndRemoveUntil(
+                        context,
+                        '/login',
+                        (route) => false,
+                      );
+                    },
+                    child: const Text(
+                      'Skip',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Color(0xFF5B7C99),
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
                 ],
               ),
-              // Bottom Section
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
-                child: Column(
-                  children: [
-                    ElevatedButton(
-                      onPressed: () {
-                        if (_currentIndex == introItems.length - 1) {
-                          Navigator.pushNamedAndRemoveUntil(
-                            context,
-                            '/login',
-                            (route) => false,
-                          );
-                        } else {
-                          _pageController.nextPage(
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeInOut,
-                          );
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        minimumSize: const Size(double.infinity, 56),
-                      ),
-                      child: Text(
-                        index == introItems.length - 1 ? 'Get Started' : 'Next',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.white,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    if (_currentIndex > 0)
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pushNamedAndRemoveUntil(
-                            context,
-                            '/login',
-                            (route) => false,
-                          );
-                        },
-                        child: const Text(
-                          'Skip',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          );
-        },
+            ),
+          ),
+        ],
       ),
     );
   }

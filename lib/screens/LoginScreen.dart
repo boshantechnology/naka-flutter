@@ -4,6 +4,7 @@ import 'package:naka/services/AuthService.dart';
 import 'package:naka/config/app_colors.dart';
 import 'package:naka/providers/AppearanceProvider.dart';
 import 'package:provider/provider.dart';
+import 'package:sms_autofill/sms_autofill.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,16 +16,40 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   bool isOtpScreen = false;
   final TextEditingController _phoneController = TextEditingController();
-  final List<TextEditingController> _otpControllers =
-      List.generate(6, (_) => TextEditingController());
-  final List<FocusNode> _otpFocusNodes =
-      List.generate(6, (_) => FocusNode());
+  final List<TextEditingController> _otpControllers = List.generate(
+    6,
+    (_) => TextEditingController(),
+  );
+  final List<FocusNode> _otpFocusNodes = List.generate(6, (_) => FocusNode());
   final AuthService _authService = AuthService();
 
   @override
   void initState() {
     super.initState();
-    // No listeners needed - using onChanged callback in TextField instead
+    // Auto-read phone number from device
+    _getPhoneNumberHint();
+  }
+
+  /// Fetches phone number hint from device SIM card
+  Future<void> _getPhoneNumberHint() async {
+    try {
+      final String? phoneNumber = await SmsAutoFill().hint;
+      if (phoneNumber != null && phoneNumber.isNotEmpty) {
+        // Remove country code (+91) if present and get last 10 digits
+        String cleanNumber = phoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
+        if (cleanNumber.length > 10) {
+          cleanNumber = cleanNumber.substring(cleanNumber.length - 10);
+        }
+        if (cleanNumber.length == 10) {
+          setState(() {
+            _phoneController.text = cleanNumber;
+          });
+        }
+      }
+    } catch (e) {
+      // Phone number hint not available, user will enter manually
+      debugPrint('Phone number hint error: $e');
+    }
   }
 
   @override
@@ -57,19 +82,20 @@ class _LoginScreenState extends State<LoginScreen> {
   void _verifyOtp() async {
     String otp = _otpControllers.map((c) => c.text).join();
     if (otp.length < 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Please enter the complete OTP")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Please enter the complete OTP")));
       return;
     }
 
-    if (otp == "123456") { // ✅ Mock verification
+    if (otp == "123456") {
+      // ✅ Mock verification
       await _authService.loginSuccess();
       Navigator.pushReplacementNamed(context, '/profile');
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Invalid OTP")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Invalid OTP")));
     }
   }
 
@@ -84,7 +110,10 @@ class _LoginScreenState extends State<LoginScreen> {
           body: SafeArea(
             child: SingleChildScrollView(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24.0,
+                  vertical: 16.0,
+                ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
@@ -161,20 +190,28 @@ class _LoginScreenState extends State<LoginScreen> {
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                      color: appearance.brightness == Brightness.dark
+                                      color:
+                                          appearance.brightness ==
+                                              Brightness.dark
                                           ? Colors.grey[700]!
                                           : Colors.grey[300]!,
                                       width: 1.5,
                                     ),
-                                    color: appearance.brightness == Brightness.dark
+                                    color:
+                                        appearance.brightness == Brightness.dark
                                         ? const Color(0xFF2A2A2A)
                                         : Colors.white,
                                   ),
-                                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16.0,
+                                  ),
                                   child: Row(
                                     children: [
-                                      Icon(Icons.phone_rounded,
-                                          color: appearance.primaryColor, size: 20),
+                                      Icon(
+                                        Icons.phone_rounded,
+                                        color: appearance.primaryColor,
+                                        size: 20,
+                                      ),
                                       const SizedBox(width: 12),
                                       const Text(
                                         '+91',
@@ -190,22 +227,30 @@ class _LoginScreenState extends State<LoginScreen> {
                                           keyboardType: TextInputType.phone,
                                           maxLength: 10,
                                           inputFormatters: [
-                                            FilteringTextInputFormatter.digitsOnly,
+                                            FilteringTextInputFormatter
+                                                .digitsOnly,
                                           ],
                                           decoration: InputDecoration(
                                             hintText: '98765 43210',
                                             hintStyle: TextStyle(
-                                              color: appearance.brightness == Brightness.dark
+                                              color:
+                                                  appearance.brightness ==
+                                                      Brightness.dark
                                                   ? Colors.grey[600]
                                                   : Colors.grey[400],
                                             ),
                                             border: InputBorder.none,
-                                            contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                                            contentPadding:
+                                                const EdgeInsets.symmetric(
+                                                  vertical: 16,
+                                                ),
                                             counterText: '',
                                           ),
                                           style: TextStyle(
                                             fontSize: 16,
-                                            color: appearance.brightness == Brightness.dark
+                                            color:
+                                                appearance.brightness ==
+                                                    Brightness.dark
                                                 ? Colors.white
                                                 : AppColors.text,
                                           ),
@@ -226,11 +271,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(12),
                                       ),
-                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 14,
+                                      ),
                                       elevation: 2,
                                     ),
                                     child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: const [
                                         Icon(Icons.send_rounded, size: 20),
                                         SizedBox(width: 8),
@@ -253,7 +301,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               children: [
                                 // OTP Input Fields
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceEvenly,
                                   children: List.generate(
                                     6,
                                     (index) => SizedBox(
@@ -265,46 +314,68 @@ class _LoginScreenState extends State<LoginScreen> {
                                         keyboardType: TextInputType.number,
                                         maxLength: 1,
                                         inputFormatters: [
-                                          FilteringTextInputFormatter.digitsOnly,
+                                          FilteringTextInputFormatter
+                                              .digitsOnly,
                                         ],
                                         onChanged: (value) {
                                           if (value.isNotEmpty && index < 5) {
-                                            FocusScope.of(context)
-                                                .requestFocus(_otpFocusNodes[index + 1]);
+                                            FocusScope.of(context).requestFocus(
+                                              _otpFocusNodes[index + 1],
+                                            );
                                           }
                                           if (value.isEmpty && index > 0) {
                                             _otpControllers[index - 1].clear();
-                                            FocusScope.of(context)
-                                                .requestFocus(_otpFocusNodes[index - 1]);
+                                            FocusScope.of(context).requestFocus(
+                                              _otpFocusNodes[index - 1],
+                                            );
+                                          }
+                                          // Auto-submit when all 6 digits are filled
+                                          if (value.isNotEmpty && index == 5) {
+                                            String otp = _otpControllers
+                                                .map((c) => c.text)
+                                                .join();
+                                            if (otp.length == 6) {
+                                              _verifyOtp();
+                                            }
                                           }
                                         },
                                         decoration: InputDecoration(
                                           counterText: '',
                                           enabledBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(12),
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
                                             borderSide: BorderSide(
-                                              color: appearance.brightness == Brightness.dark
+                                              color:
+                                                  appearance.brightness ==
+                                                      Brightness.dark
                                                   ? Colors.grey[700]!
                                                   : Colors.grey[300]!,
                                               width: 1.5,
                                             ),
                                           ),
                                           focusedBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(12),
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
                                             borderSide: BorderSide(
                                               color: appearance.primaryColor,
                                               width: 2,
                                             ),
                                           ),
                                           filled: true,
-                                          fillColor: appearance.brightness == Brightness.dark
+                                          fillColor:
+                                              appearance.brightness ==
+                                                  Brightness.dark
                                               ? const Color(0xFF2A2A2A)
                                               : Colors.grey[50],
                                         ),
                                         style: TextStyle(
                                           fontSize: 22,
                                           fontWeight: FontWeight.w700,
-                                          color: appearance.brightness == Brightness.dark
+                                          color:
+                                              appearance.brightness ==
+                                                  Brightness.dark
                                               ? Colors.white
                                               : AppColors.text,
                                         ),
@@ -324,13 +395,19 @@ class _LoginScreenState extends State<LoginScreen> {
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(12),
                                       ),
-                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 14,
+                                      ),
                                       elevation: 2,
                                     ),
                                     child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: const [
-                                        Icon(Icons.check_circle_rounded, size: 20),
+                                        Icon(
+                                          Icons.check_circle_rounded,
+                                          size: 20,
+                                        ),
                                         SizedBox(width: 8),
                                         Text(
                                           'Verify & Continue',
@@ -363,7 +440,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                         'Wrong number? ',
                                         style: TextStyle(
                                           fontSize: 14,
-                                          color: appearance.brightness == Brightness.dark
+                                          color:
+                                              appearance.brightness ==
+                                                  Brightness.dark
                                               ? Colors.grey[500]
                                               : AppColors.textSecondary,
                                         ),
@@ -400,8 +479,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.security_rounded,
-                                  color: appearance.primaryColor, size: 18),
+                              Icon(
+                                Icons.security_rounded,
+                                color: appearance.primaryColor,
+                                size: 18,
+                              ),
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(

@@ -8,7 +8,7 @@ import '../providers/AppearanceProvider.dart';
 class JobBidsListScreen extends StatefulWidget {
   final String jobTitle;
 
-  const JobBidsListScreen({Key? key, required this.jobTitle}) : super(key: key);
+  const JobBidsListScreen({super.key, required this.jobTitle});
 
   @override
   State<JobBidsListScreen> createState() => _JobBidsListScreenState();
@@ -163,12 +163,11 @@ class _BidCard extends StatelessWidget {
   final VoidCallback onReject;
 
   const _BidCard({
-    Key? key,
     required this.bid,
     required this.appearance,
     required this.onAccept,
     required this.onReject,
-  }) : super(key: key);
+  });
 
   String _getStatusText(String status) {
     switch (status) {

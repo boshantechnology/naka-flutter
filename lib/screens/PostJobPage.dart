@@ -3,6 +3,11 @@ import 'package:naka/config/app_colors.dart';
 import 'package:naka/utils/app_strings.dart';
 import 'package:naka/providers/AppearanceProvider.dart';
 import 'package:provider/provider.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:naka/screens/LocationPickerScreen.dart';
 
 class PostJobPage extends StatefulWidget {
   const PostJobPage({super.key});
@@ -14,90 +19,147 @@ class PostJobPage extends StatefulWidget {
 class _PostJobPageState extends State<PostJobPage> {
   // Form controllers
   final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _minSalaryController = TextEditingController();
-  final TextEditingController _maxSalaryController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _mobileController = TextEditingController();
-  final TextEditingController _roleSearchController = TextEditingController();
+  final TextEditingController _wageController = TextEditingController();
+  final TextEditingController _workersNeededController = TextEditingController();
+  final TextEditingController _workDateController = TextEditingController();
   
   // Dropdown values
-  final String? _selectedCategory = AppStrings.jobs;
-  String? _selectedSubCategory = AppStrings.fullTimeJobs;
-  String? _selectedRole;
-  String? _selectedLocation = "Hyderabad";
-  String? _selectedLocality;
-  String? _selectedSalaryType = "Monthly"; // Default salary type
+  final String _selectedCategory = AppStrings.jobs;
+  final String _selectedSubCategory = AppStrings.dailyWage;
+  String? _selectedJobType;
+  String? _selectedLocation;
+  String? _selectedWageType = "Per Day"; // Daily or Hourly
   bool _maintainPrivacy = false;
-  bool _isRoleSearching = false;
 
-  // Sample roles for dropdown - expanded for better search demonstration
-  final List<String> _allRoles = [
-    "Software Developer", 
-    "Web Developer",
-    "Mobile App Developer",
-    "UI/UX Designer", 
-    "Graphic Designer",
-    "Project Manager",
-    "Product Manager",
-    "Business Analyst",
-    "Data Analyst",
-    "Data Scientist",
-    "Digital Marketing Specialist",
-    "Content Writer",
-    "HR Manager",
-    "Accountant",
-    "Sales Executive",
-    "Customer Support",
-    "System Administrator",
-    "Network Engineer",
-    "DevOps Engineer",
-    "QA Tester"
+  // Job types for daily wage work
+  final List<String> _jobTypes = [
+    "Construction",
+    "Cleaning",
+    "Delivery",
+    "Loading/Unloading",
+    "Cooking",
+    "Gardening",
+    "Plumbing",
+    "Electrical",
+    "Painting",
+    "Carpentry",
+    "Labor",
+    "Other"
   ];
-  
-  List<String> _filteredRoles = [];
   
   // Sample localities
   final List<String> _localities = ["Hitech City", "Banjara Hills", "Ameerpet", "Madhapur", "Gachibowli"];
   
-  // Salary types
-  final List<String> _salaryTypes = ["Yearly", "Monthly", "Daily"];
+  // Wage types
+  final List<String> _wageTypes = ["Per Day", "Per Hour"];
+  
+  // Image upload
+  File? _selectedImage;
+  final ImagePicker _imagePicker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
-    // Initialize filtered roles with all roles
-    _filteredRoles = List.from(_allRoles);
+    // Set default date to today
+    _workDateController.text = DateTime.now().toString().split(' ')[0];
+    // Get current location
+    _getCurrentLocation();
+  }
+
+  Future<void> _getCurrentLocation() async {
+    try {
+      // Check location permission
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          // Use default if permission denied
+          _selectedLocation = "Hyderabad, Telangana, India";
+          setState(() {});
+          return;
+        }
+      }
+
+      // Get current position
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      // Get address from coordinates
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (placemarks.isNotEmpty) {
+        Placemark place = placemarks[0];
+        String city = place.locality ?? place.administrativeArea ?? "Hyderabad";
+        String state = place.administrativeArea ?? "Telangana";
+        String country = place.country ?? "India";
+        
+        setState(() {
+          _selectedLocation = "$city, $state, $country";
+        });
+      } else {
+        _selectedLocation = "Hyderabad, Telangana, India";
+        setState(() {});
+      }
+    } catch (e) {
+      // Fallback to default location
+      setState(() {
+        _selectedLocation = "Hyderabad, Telangana, India";
+      });
+      print("Error getting location: $e");
+    }
   }
 
   @override
   void dispose() {
     _titleController.dispose();
-    _minSalaryController.dispose();
-    _maxSalaryController.dispose();
     _descriptionController.dispose();
     _mobileController.dispose();
-    _roleSearchController.dispose();
+    _wageController.dispose();
+    _workersNeededController.dispose();
+    _workDateController.dispose();
     super.dispose();
   }
 
-  void _filterRoles(String query) {
-    setState(() {
-      if (query.isEmpty) {
-        _filteredRoles = List.from(_allRoles);
-      } else {
-        _filteredRoles = _allRoles
-            .where((role) => role.toLowerCase().contains(query.toLowerCase()))
-            .toList();
+  Future<void> _pickImage() async {
+    try {
+      final XFile? pickedFile = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        maxHeight: 600,
+        imageQuality: 85,
+      );
+      if (pickedFile != null) {
+        setState(() {
+          _selectedImage = File(pickedFile.path);
+        });
       }
-    });
+    } catch (e) {
+      _showError("Failed to pick image");
+    }
   }
 
-  void _selectRole(String role) {
-    setState(() {
-      _selectedRole = role;
-      _roleSearchController.text = role;
-      _isRoleSearching = false;
-    });
+  Future<void> _captureImage() async {
+    try {
+      final XFile? pickedFile = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 800,
+        maxHeight: 600,
+        imageQuality: 85,
+      );
+      if (pickedFile != null) {
+        setState(() {
+          _selectedImage = File(pickedFile.path);
+        });
+      }
+    } catch (e) {
+      _showError("Failed to capture image");
+    }
   }
 
   void _postJob() {
@@ -105,51 +167,49 @@ class _PostJobPageState extends State<PostJobPage> {
     if (_validateForm()) {
       print("Job Posted Successfully!");
       print("Title: ${_titleController.text}");
-      print("Category: $_selectedCategory");
-      print("Sub-Category: $_selectedSubCategory");
-      print("Role: $_selectedRole");
-      print("Salary Type: $_selectedSalaryType");
-      print("Salary Range: ${_minSalaryController.text} - ${_maxSalaryController.text}");
+      print("Job Type: $_selectedJobType");
+      print("Wage: ${_wageController.text} ($_selectedWageType)");
+      print("Workers Needed: ${_workersNeededController.text}");
+      print("Work Date: ${_workDateController.text}");
       print("Description: ${_descriptionController.text}");
       print("Location: $_selectedLocation");
-      print("Locality: $_selectedLocality");
       print("Contact Mobile: ${_mobileController.text}");
       print("Privacy Setting: ${_maintainPrivacy ? 'Private' : 'Public'}");
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Job posted successfully!"),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.pop(context);
     }
   }
 
   bool _validateForm() {
-    // Basic validation
-    if (_titleController.text.length < 10) {
-      _showError("Ad title must be at least 10 characters");
+    // Basic validation for daily wage work
+    if (_titleController.text.length < 5) {
+      _showError("Job title must be at least 5 characters");
       return false;
     }
-    if (_descriptionController.text.length < 30) {
-      _showError("Description must be at least 30 characters");
+    if (_selectedJobType == null) {
+      _showError("Please select job type");
       return false;
     }
-    if (_selectedRole == null) {
-      _showError("Please select a role");
+    if (_wageController.text.isEmpty) {
+      _showError("Please enter wage amount");
       return false;
     }
-    if (_selectedSalaryType == null) {
-      _showError("Please select salary type");
+    if (_workersNeededController.text.isEmpty) {
+      _showError("Please enter number of workers needed");
       return false;
     }
-    if (_minSalaryController.text.isEmpty || _maxSalaryController.text.isEmpty) {
-      _showError("Please enter salary range");
+    if (_descriptionController.text.length < 10) {
+      _showError("Description must be at least 10 characters");
       return false;
     }
-    if (_selectedLocation == null) {
-      _showError("Please select job location");
-      return false;
-    }
-    if (_selectedLocality == null) {
-      _showError("Please select locality");
-      return false;
-    }
-    if (_mobileController.text.isEmpty) {
-      _showError("Please enter contact mobile number");
+    if (_selectedLocation == null || _selectedLocation!.isEmpty) {
+      _showError("Please select work location from map");
       return false;
     }
     
@@ -209,42 +269,6 @@ class _PostJobPageState extends State<PostJobPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Category Section
-                _buildCompactCard(
-                  appearance: appearance,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                    'Category Details',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildCompactInfoField(AppStrings.category, _selectedCategory ?? "", appearance),
-                  _buildCompactDropdown(
-                    AppStrings.subCategory,
-                    _selectedSubCategory,
-                    [
-                      AppStrings.fullTimeJobs, 
-                      AppStrings.partTimeJobs, 
-                      AppStrings.dailyWage, 
-                      AppStrings.workFromHome
-                    ],
-                    (value) {
-                      setState(() {
-                        _selectedSubCategory = value;
-                      });
-                    },
-                    false,
-                    appearance,
-                  ),
-                ],
-              ),
-            ),
             const SizedBox(height: 10),
             
             // Job Details Section
@@ -263,23 +287,35 @@ class _PostJobPageState extends State<PostJobPage> {
                   ),
                   const SizedBox(height: 8),
                   _buildCompactTextField(
-                    AppStrings.enterTitle, 
+                    'Job Title', 
                     _titleController,
+                    hintText: 'e.g., Painting Work, Cleaning',
                     isRequired: true,
                     appearance: appearance,
                   ),
-                  _buildSearchableRoleFieldCompact(appearance),
+                  _buildCompactDropdown(
+                    'Job Type',
+                    _selectedJobType,
+                    _jobTypes,
+                    (value) {
+                      setState(() {
+                        _selectedJobType = value;
+                      });
+                    },
+                    true,
+                    appearance,
+                  ),
                   Row(
                     children: [
                       Expanded(
                         flex: 2,
                         child: _buildCompactDropdown(
-                          AppStrings.salaryType, 
-                          _selectedSalaryType, 
-                          _salaryTypes, 
+                          'Wage Type', 
+                          _selectedWageType, 
+                          _wageTypes, 
                           (value) {
                             setState(() {
-                              _selectedSalaryType = value;
+                              _selectedWageType = value;
                             });
                           },
                           true,
@@ -287,24 +323,11 @@ class _PostJobPageState extends State<PostJobPage> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                    ],
-                  ),
-                  Row(
-                    children: [
                       Expanded(
                         child: _buildCompactTextField(
-                          'Min Salary', 
-                          _minSalaryController,
-                          isRequired: true,
-                          keyboardType: TextInputType.number,
-                          appearance: appearance,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _buildCompactTextField(
-                          'Max Salary', 
-                          _maxSalaryController,
+                          'Wage Amount', 
+                          _wageController,
+                          hintText: '₹',
                           isRequired: true,
                           keyboardType: TextInputType.number,
                           appearance: appearance,
@@ -313,11 +336,154 @@ class _PostJobPageState extends State<PostJobPage> {
                     ],
                   ),
                   _buildCompactTextField(
-                    AppStrings.adDescription,
-                    _descriptionController,
+                    'Workers Needed', 
+                    _workersNeededController,
+                    hintText: 'e.g., 5',
                     isRequired: true,
-                    maxLines: 3,
+                    keyboardType: TextInputType.number,
                     appearance: appearance,
+                  ),
+                  _buildDatePickerField(appearance),
+                  _buildCompactTextField(
+                    'Description',
+                    _descriptionController,
+                    hintText: 'Describe the work details, requirements, timing...',
+                    isRequired: true,
+                    maxLines: 4,
+                    appearance: appearance,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            
+            // Image Upload Section
+            _buildCompactCard(
+              appearance: appearance,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Job Image (Optional)',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  if (_selectedImage == null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: Colors.grey[300]!,
+                          style: BorderStyle.solid,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.grey[50],
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.image_outlined,
+                            size: 40,
+                            color: appearance.primaryColor,
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'No image selected',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              ElevatedButton.icon(
+                                onPressed: _pickImage,
+                                icon: const Icon(Icons.photo_library),
+                                label: const Text('Gallery'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: appearance.primaryColor,
+                                  foregroundColor: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              ElevatedButton.icon(
+                                onPressed: _captureImage,
+                                icon: const Icon(Icons.camera_alt),
+                                label: const Text('Camera'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.grey[600],
+                                  foregroundColor: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ] else ...[
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: appearance.primaryColor,
+                          width: 2,
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: Image.file(
+                              _selectedImage!,
+                              width: double.infinity,
+                              height: 200,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                TextButton.icon(
+                                  onPressed: _pickImage,
+                                  icon: const Icon(Icons.edit),
+                                  label: const Text('Change'),
+                                ),
+                                TextButton.icon(
+                                  onPressed: () {
+                                    setState(() {
+                                      _selectedImage = null;
+                                    });
+                                  },
+                                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                  label: const Text('Remove', style: TextStyle(color: Colors.red)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.blue[50],
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.blue[200]!),
+                    ),
+                    child: const Text(
+                      '💡 Tip: Upload a clear image of the work/location (800x600px recommended for best quality). Helps workers understand the job better!',
+                      style: TextStyle(fontSize: 11, color: Colors.blue),
+                    ),
                   ),
                 ],
               ),
@@ -331,7 +497,7 @@ class _PostJobPageState extends State<PostJobPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Location',
+                    'Work Location',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
@@ -339,37 +505,63 @@ class _PostJobPageState extends State<PostJobPage> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  _buildCompactDropdown(
-                    AppStrings.contactInfo, 
-                    _selectedLocation, 
-                    ["Hyderabad", "Mumbai", "Delhi", "Bangalore", "Chennai"], 
-                    (value) {
-                      setState(() {
-                        _selectedLocation = value;
-                      });
+                  GestureDetector(
+                    onTap: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => LocationPickerScreen(
+                            onLocationSelected: (location) {
+                              setState(() {
+                                _selectedLocation = location;
+                              });
+                            },
+                          ),
+                        ),
+                      );
                     },
-                    true,
-                    appearance,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: appearance.brightness == Brightness.dark
+                            ? const Color(0xFF2A2A2A)
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: appearance.brightness == Brightness.dark
+                              ? Colors.grey[700]!
+                              : Colors.grey[300]!,
+                        ),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 12,
+                        horizontal: 10,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.location_on, size: 18, color: appearance.primaryColor),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _selectedLocation?.isNotEmpty == true
+                                  ? _selectedLocation!
+                                  : 'Tap to select location on map',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: appearance.brightness == Brightness.dark
+                                    ? Colors.white
+                                    : Colors.black87,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 2,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Icon(Icons.map, size: 18, color: appearance.primaryColor),
+                        ],
+                      ),
+                    ),
                   ),
-                  _buildCompactDropdown(
-                    AppStrings.locality, 
-                    _selectedLocality, 
-                    _localities, 
-                    (value) {
-                      setState(() {
-                        _selectedLocality = value;
-                      });
-                    },
-                    true,
-                    appearance,
-                  ),
-                  _buildCompactTextField(
-                    AppStrings.mobile, 
-                    _mobileController,
-                    isRequired: true,
-                    keyboardType: TextInputType.phone,
-                    appearance: appearance,
-                  ),
+                  const SizedBox(height: 8),
                 ],
               ),
             ),
@@ -432,6 +624,88 @@ class _PostJobPageState extends State<PostJobPage> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildDatePickerField(AppearanceProvider appearance) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          RichText(
+            text: TextSpan(
+              text: 'Work Date',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: appearance.brightness == Brightness.dark
+                    ? Colors.white
+                    : Colors.black87,
+              ),
+              children: const [
+                TextSpan(
+                  text: " *",
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
+                )
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+          TextField(
+            controller: _workDateController,
+            readOnly: true,
+            style: const TextStyle(fontSize: 12),
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: appearance.brightness == Brightness.dark
+                  ? const Color(0xFF2A2A2A)
+                  : Colors.white,
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 8,
+              ),
+              suffixIcon: Icon(Icons.calendar_today, size: 16, color: appearance.primaryColor),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(
+                  color: Colors.grey[300]!,
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(
+                  color: Colors.grey[300]!,
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(
+                  color: AppColors.primary,
+                  width: 1.5,
+                ),
+              ),
+            ),
+            onTap: () async {
+              DateTime? pickedDate = await showDatePicker(
+                context: context,
+                initialDate: DateTime.now(),
+                firstDate: DateTime.now(),
+                lastDate: DateTime.now().add(const Duration(days: 365)),
+              );
+              if (pickedDate != null) {
+                setState(() {
+                  _workDateController.text = pickedDate.toString().split(' ')[0];
+                });
+              }
+            },
+          ),
+        ],
+      ),
     );
   }
 
@@ -643,153 +917,6 @@ class _PostJobPageState extends State<PostJobPage> {
                   child: Text(value),
                 );
               }).toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSearchableRoleFieldCompact(AppearanceProvider appearance) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          RichText(
-            text: TextSpan(
-              text: AppStrings.selectRole,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: appearance.brightness == Brightness.dark
-                    ? Colors.white
-                    : Colors.black87,
-              ),
-              children: const [
-                TextSpan(
-                  text: " *",
-                  style: TextStyle(
-                    color: Colors.red,
-                    fontWeight: FontWeight.bold,
-                  ),
-                )
-              ],
-            ),
-          ),
-          const SizedBox(height: 4),
-          Container(
-            decoration: BoxDecoration(
-              color: appearance.brightness == Brightness.dark
-                  ? const Color(0xFF2A2A2A)
-                  : Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: (appearance.brightness == Brightness.dark
-                    ? Colors.grey[700]
-                    : Colors.grey[300]) ?? Colors.grey[300]!,
-              ),
-            ),
-            child: Column(
-              children: [
-                TextField(
-                  controller: _roleSearchController,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: appearance.brightness == Brightness.dark
-                        ? Colors.white
-                        : Colors.black87,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: AppStrings.searchRole,
-                    hintStyle: TextStyle(
-                      fontSize: 12,
-                      color: appearance.brightness == Brightness.dark
-                          ? Colors.grey[600]
-                          : Colors.grey[400],
-                    ),
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 8,
-                    ),
-                    border: InputBorder.none,
-                    suffixIcon: IconButton(
-                      iconSize: 18,
-                      padding: EdgeInsets.zero,
-                      icon: Icon(
-                        _isRoleSearching ? Icons.close : Icons.arrow_drop_down,
-                        color: appearance.primaryColor,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          if (_isRoleSearching) {
-                            _roleSearchController.clear();
-                            _filterRoles("");
-                          }
-                          _isRoleSearching = !_isRoleSearching;
-                        });
-                      },
-                    ),
-                  ),
-                  onTap: () {
-                    setState(() {
-                      _isRoleSearching = true;
-                    });
-                  },
-                  onChanged: (value) {
-                    _filterRoles(value);
-                  },
-                ),
-                if (_isRoleSearching)
-                  Container(
-                    constraints: const BoxConstraints(
-                      maxHeight: 150,
-                    ),
-                    child: _filteredRoles.isEmpty
-                        ? Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Text(
-                              "No roles found",
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: appearance.brightness == Brightness.dark
-                                    ? Colors.grey[500]
-                                    : Colors.grey[600],
-                              ),
-                            ),
-                          )
-                        : ListView.builder(
-                            shrinkWrap: true,
-                            itemCount: _filteredRoles.length,
-                            itemBuilder: (context, index) {
-                              return ListTile(
-                                title: Text(
-                                  _filteredRoles[index],
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: appearance.brightness == Brightness.dark
-                                        ? Colors.white
-                                        : Colors.black87,
-                                  ),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 4,
-                                ),
-                                dense: true,
-                                onTap: () {
-                                  _selectRole(_filteredRoles[index]);
-                                },
-                                tileColor: appearance.brightness == Brightness.dark
-                                    ? const Color(0xFF2A2A2A)
-                                    : Colors.white,
-                                hoverColor: appearance.primaryColor.withOpacity(0.1),
-                              );
-                            },
-                          ),
-                  ),
-              ],
             ),
           ),
         ],

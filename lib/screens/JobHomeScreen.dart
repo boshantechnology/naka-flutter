@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:naka/screens/UserListScreen.dart';
 import 'package:naka/screens/WorkerDetailsPage.dart';
 import 'package:naka/screens/JobDetailsPage.dart';
+import 'package:naka/screens/ChatScreen.dart';
 import 'package:naka/widgets/JobCard.dart';
 import 'package:naka/providers/AppearanceProvider.dart';
-import 'package:naka/gen_l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:translator/translator.dart';
 
 class JobHomeScreen extends StatefulWidget {
   const JobHomeScreen({super.key});
@@ -116,7 +118,7 @@ class _JobHomeScreenState extends State<JobHomeScreen> {
                         child: const CircleAvatar(
                           radius: 14,
                           backgroundColor: Color(0xFFFBE3C7),
-                          backgroundImage: NetworkImage('https://i.postimg.cc/zDLDCwp7/image2.jpg'),
+                          child: Icon(Icons.person, color: Colors.brown),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -344,7 +346,7 @@ class _JobHomeScreenState extends State<JobHomeScreen> {
                             }
 
                             return Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 0.0, vertical: 1.0),
+                              padding: const EdgeInsets.symmetric(horizontal: 0.0, vertical: 0.1),
                               child: _buildWorkerCard(
                                 filteredWorkers[index],
                                 appearance,
@@ -469,21 +471,110 @@ class _ContractorJobCard extends StatefulWidget {
 
 class _ContractorJobCardState extends State<_ContractorJobCard> {
   bool isFavorite = false;
-  bool isLiked = false;
-  int likeCount = 245;
   int commentCount = 12;
   final TextEditingController _commentController = TextEditingController();
   List<String> comments = ['अच्छा काम है!', 'मुझे यह काम दिलचस्प लगता है'];
+  final FlutterTts flutterTts = FlutterTts();
+  bool isPlayingAudio = false;
+  bool isTranslated = false;
+  bool isTranslating = false;
+  late Map<String, String> translatedJob;
+  final GoogleTranslator translator = GoogleTranslator();
 
   @override
   void initState() {
     super.initState();
     _checkIfFavorite();
+    _initTts();
+  }
+
+  Future<void> _initTts() async {
+    await flutterTts.setLanguage('en-IN');
+    await flutterTts.setSpeechRate(0.85);
+  }
+
+  Future<void> _speakJobInfo() async {
+    String text = '''
+    Job Title: ${widget.job['title']}.
+    Posted by: ${widget.job['company']}.
+    Location: ${widget.job['location']}.
+    Salary: ${widget.job['salary']}.
+    Number of workers needed: ${widget.job['workersNeeded']}.
+    Duration: ${widget.job['daysRequired']} days.
+    Description: ${widget.job['description']}.
+    ''';
+
+    setState(() {
+      isPlayingAudio = true;
+    });
+
+    await flutterTts.speak(text);
+    
+    flutterTts.setCompletionHandler(() {
+      setState(() {
+        isPlayingAudio = false;
+      });
+    });
+  }
+
+  Future<void> _stopAudio() async {
+    await flutterTts.stop();
+    setState(() {
+      isPlayingAudio = false;
+    });
+  }
+
+  Future<void> _toggleTranslation() async {
+    if (isTranslated) {
+      // Switch back to original
+      setState(() {
+        isTranslated = false;
+      });
+    } else {
+      // Translate to Hindi
+      setState(() {
+        isTranslating = true;
+      });
+
+      try {
+        String title = widget.job['title'] ?? '';
+        String company = widget.job['company'] ?? '';
+        String location = widget.job['location'] ?? '';
+        String description = widget.job['description'] ?? '';
+
+        // Translate to Hindi
+        var translatedTitle = await translator.translate(title, from: 'en', to: 'hi');
+        var translatedCompany = await translator.translate(company, from: 'en', to: 'hi');
+        var translatedLocation = await translator.translate(location, from: 'en', to: 'hi');
+        var translatedDescription = await translator.translate(description, from: 'en', to: 'hi');
+
+        setState(() {
+          translatedJob = {
+            'title': translatedTitle.toString(),
+            'company': translatedCompany.toString(),
+            'location': translatedLocation.toString(),
+            'description': translatedDescription.toString(),
+          };
+          isTranslated = true;
+          isTranslating = false;
+        });
+      } catch (e) {
+        setState(() {
+          isTranslating = false;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Translation error: $e')),
+          );
+        }
+      }
+    }
   }
 
   @override
   void dispose() {
     _commentController.dispose();
+    flutterTts.stop();
     super.dispose();
   }
 
@@ -1188,7 +1279,9 @@ class _ContractorJobCardState extends State<_ContractorJobCard> {
                       children: [
                         Expanded(
                           child: Text(
-                            widget.job['title'] as String,
+                            isTranslated && translatedJob.isNotEmpty
+                                ? translatedJob['title'] ?? widget.job['title']
+                                : widget.job['title'] as String,
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
@@ -1222,7 +1315,9 @@ class _ContractorJobCardState extends State<_ContractorJobCard> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      widget.job['company'] as String,
+                      isTranslated && translatedJob.isNotEmpty
+                          ? translatedJob['company'] ?? widget.job['company']
+                          : widget.job['company'] as String,
                       style: TextStyle(
                         fontSize: 13,
                         color: widget.appearance.brightness == Brightness.dark
@@ -1354,34 +1449,59 @@ class _ContractorJobCardState extends State<_ContractorJobCard> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-              // Like Button
+              // Microphone Button (Listen to Job Info)
               InkWell(
-                onTap: () {
-                  setState(() {
-                    isLiked = !isLiked;
-                    likeCount = isLiked ? likeCount + 1 : likeCount - 1;
-                  });
-                },
+                onTap: isPlayingAudio ? _stopAudio : _speakJobInfo,
                 borderRadius: BorderRadius.circular(8),
-                splashColor: Colors.blue.withValues(alpha: 0.3),
+                splashColor: Colors.purple.withValues(alpha: 0.3),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 8),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        isLiked ? Icons.thumb_up : Icons.thumb_up_outlined,
-                        color: isLiked ? Colors.blue : Colors.grey,
+                        isPlayingAudio ? Icons.stop_circle : Icons.mic,
+                        size: 18,
+                        color: isPlayingAudio ? Colors.red : Colors.purple,
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        isPlayingAudio ? 'Stop' : 'Listen',
+                        style: TextStyle(
+                          fontSize: 9,
+                          color: isPlayingAudio ? Colors.red : Colors.grey[700],
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Translate Button
+              InkWell(
+                onTap: _toggleTranslation,
+                borderRadius: BorderRadius.circular(8),
+                splashColor: Colors.green.withValues(alpha: 0.3),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 8),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.translate,
+                        color: isTranslated ? Colors.green[700] : Colors.green,
                         size: 19,
                       ),
                       const SizedBox(width: 3),
                       Text(
-                        '$likeCount',
+                        isTranslating ? 'Translating...' : (isTranslated ? 'English' : 'हिंदी'),
                         style: TextStyle(
                           fontSize: 9,
                           color: widget.appearance.brightness == Brightness.dark
                               ? Colors.grey[300]
                               : Colors.grey[700],
+                          fontWeight: isTranslated ? FontWeight.bold : FontWeight.normal,
                         ),
                       ),
                     ],
@@ -1447,43 +1567,6 @@ class _ContractorJobCardState extends State<_ContractorJobCard> {
                   ),
                 ),
               ),
-
-              // Chat Button
-              InkWell(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('💬 Message sent!'),
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
-                },
-                borderRadius: BorderRadius.circular(8),
-                splashColor: widget.appearance.primaryColor.withValues(alpha: 0.3),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.chat_bubble_outline,
-                        color: widget.appearance.primaryColor,
-                        size: 19,
-                      ),
-                      const SizedBox(width: 3),
-                      Text(
-                        'Chat',
-                        style: TextStyle(
-                          fontSize: 9,
-                          color: widget.appearance.brightness == Brightness.dark
-                              ? Colors.grey[300]
-                              : Colors.grey[700],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
             ],
           ),
             ),
@@ -1511,11 +1594,58 @@ class _WorkerCard extends StatefulWidget {
 
 class _WorkerCardState extends State<_WorkerCard> {
   bool isFavorite = false;
+  final FlutterTts flutterTts = FlutterTts();
+  bool isPlayingAudio = false;
+  int commentCount = 5;
+  final TextEditingController _commentController = TextEditingController();
+  List<String> comments = ['Great worker!', 'Very professional', 'Highly recommended'];
   
   @override
   void initState() {
     super.initState();
     _checkIfFavorite();
+    _initTts();
+  }
+
+  Future<void> _initTts() async {
+    await flutterTts.setLanguage('en-IN');
+    await flutterTts.setSpeechRate(0.85);
+  }
+
+  Future<void> _speakWorkerInfo() async {
+    String text = '''
+    ${widget.worker['workerName']}, ${widget.worker['workerType']}.
+    Charges ${widget.worker['dailyRate']} rupees per day, or ${widget.worker['halfDayRate']} rupees for half day.
+    Skills: ${widget.worker['skills']}.
+    Location: ${widget.worker['location']}.
+    Rating: ${widget.worker['rating']} out of 5 stars.
+    ''';
+
+    setState(() {
+      isPlayingAudio = true;
+    });
+
+    await flutterTts.speak(text);
+    
+    flutterTts.setCompletionHandler(() {
+      setState(() {
+        isPlayingAudio = false;
+      });
+    });
+  }
+
+  Future<void> _stopAudio() async {
+    await flutterTts.stop();
+    setState(() {
+      isPlayingAudio = false;
+    });
+  }
+  
+  @override
+  void dispose() {
+    _commentController.dispose();
+    flutterTts.stop();
+    super.dispose();
   }
   
   Future<void> _checkIfFavorite() async {
@@ -1641,6 +1771,389 @@ class _WorkerCardState extends State<_WorkerCard> {
     });
   }
 
+  void _editComment(int index) {
+    _commentController.text = comments[index];
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: widget.appearance.brightness == Brightness.dark
+          ? const Color(0xFF2A2A2A)
+          : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      isScrollControlled: true,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: widget.appearance.brightness == Brightness.dark
+                        ? Colors.grey[600]
+                        : Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Edit Comment',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: widget.appearance.brightness == Brightness.dark
+                      ? Colors.white
+                      : Colors.black,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                decoration: BoxDecoration(
+                  color: widget.appearance.brightness == Brightness.dark
+                      ? const Color(0xFF1E1E1E)
+                      : Colors.grey[100],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: widget.appearance.brightness == Brightness.dark
+                        ? Colors.grey[700]!
+                        : Colors.grey[300]!,
+                    width: 1,
+                  ),
+                ),
+                child: TextField(
+                  controller: _commentController,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    hintText: 'Edit your comment...',
+                    hintStyle: TextStyle(
+                      color: widget.appearance.brightness == Brightness.dark
+                          ? Colors.grey[600]
+                          : Colors.grey,
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.all(12),
+                  ),
+                  style: TextStyle(
+                    color: widget.appearance.brightness == Brightness.dark
+                        ? Colors.white
+                        : Colors.black,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey[400],
+                      ),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        if (_commentController.text.isNotEmpty) {
+                          setState(() {
+                            comments[index] = _commentController.text;
+                          });
+                          _commentController.clear();
+                          Navigator.pop(context);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: widget.appearance.primaryColor,
+                      ),
+                      child: const Text(
+                        'Update',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _deleteComment(int index) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: widget.appearance.brightness == Brightness.dark
+            ? const Color(0xFF2A2A2A)
+            : Colors.white,
+        title: Text(
+          'Delete Comment',
+          style: TextStyle(
+            color: widget.appearance.brightness == Brightness.dark
+                ? Colors.white
+                : Colors.black,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to delete this comment?',
+          style: TextStyle(
+            color: widget.appearance.brightness == Brightness.dark
+                ? Colors.white70
+                : Colors.black87,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'No',
+              style: TextStyle(color: widget.appearance.primaryColor),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                comments.removeAt(index);
+                commentCount--;
+              });
+              Navigator.pop(context);
+            },
+            child: const Text('Yes', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showCommentDialog() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: widget.appearance.brightness == Brightness.dark
+          ? const Color(0xFF2A2A2A)
+          : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      isScrollControlled: true,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: SingleChildScrollView(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Comments ($commentCount)',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: widget.appearance.brightness == Brightness.dark
+                        ? Colors.white
+                        : Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                // Comments list
+                ...comments.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final comment = entry.value;
+                  
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CircleAvatar(
+                          radius: 16,
+                          backgroundColor: widget.appearance.primaryColor.withValues(alpha: 0.2),
+                          child: Icon(Icons.person, size: 18, color: widget.appearance.primaryColor),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'User ${index + 1}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: widget.appearance.brightness == Brightness.dark
+                                      ? Colors.white
+                                      : Colors.black,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                comment,
+                                style: TextStyle(
+                                  color: widget.appearance.brightness == Brightness.dark
+                                      ? Colors.grey[300]
+                                      : Colors.grey[700],
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${index + 1}d ago',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        PopupMenuButton<String>(
+                          itemBuilder: (BuildContext context) => [
+                            PopupMenuItem<String>(
+                              value: 'edit',
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.edit, size: 16, color: widget.appearance.primaryColor),
+                                  const SizedBox(width: 8),
+                                  const Text('Edit'),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem<String>(
+                              value: 'delete',
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.delete, size: 16, color: Colors.red),
+                                  const SizedBox(width: 8),
+                                  const Text('Delete', style: TextStyle(color: Colors.red)),
+                                ],
+                              ),
+                            ),
+                          ],
+                          onSelected: (value) {
+                            if (value == 'edit') {
+                              _editComment(index);
+                            } else if (value == 'delete') {
+                              _deleteComment(index);
+                            }
+                          },
+                          icon: Icon(
+                            Icons.more_vert,
+                            size: 16,
+                            color: Colors.grey[500],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+                const SizedBox(height: 16),
+                
+                // Divider
+                Divider(
+                  color: widget.appearance.brightness == Brightness.dark
+                      ? Colors.grey[700]
+                      : Colors.grey[200],
+                ),
+                const SizedBox(height: 12),
+                
+                // Input field - Add comment
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: widget.appearance.brightness == Brightness.dark
+                              ? Colors.grey[800]
+                              : Colors.grey[100],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: widget.appearance.brightness == Brightness.dark
+                                ? Colors.grey[700]!
+                                : Colors.grey[200]!,
+                            width: 1,
+                          ),
+                        ),
+                        child: TextField(
+                          controller: _commentController,
+                          maxLines: 2,
+                          minLines: 1,
+                          decoration: InputDecoration(
+                            hintText: 'Add a comment...',
+                            hintStyle: TextStyle(
+                              color: Colors.grey[500],
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.all(12),
+                          ),
+                          style: TextStyle(
+                            color: widget.appearance.brightness == Brightness.dark
+                                ? Colors.white
+                                : Colors.black,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () {
+                        if (_commentController.text.isNotEmpty) {
+                          setState(() {
+                            comments.add(_commentController.text);
+                            commentCount++;
+                          });
+                          _commentController.clear();
+                          Navigator.pop(context);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: widget.appearance.primaryColor,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.send,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -1675,8 +2188,8 @@ class _WorkerCardState extends State<_WorkerCard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: 55,
+                  height: 55,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
@@ -1698,7 +2211,7 @@ class _WorkerCardState extends State<_WorkerCard> {
                   child: Icon(
                     Icons.person,
                     color: widget.appearance.primaryColor,
-                    size: 20,
+                    size: 28,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1709,7 +2222,7 @@ class _WorkerCardState extends State<_WorkerCard> {
                       Text(
                         widget.worker['workerName'] as String,
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 17,
                           fontWeight: FontWeight.w700,
                           color: widget.appearance.brightness == Brightness.dark
                               ? Colors.white
@@ -1720,7 +2233,7 @@ class _WorkerCardState extends State<_WorkerCard> {
                       Text(
                         widget.worker['workerType'] as String,
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 14,
                           color: widget.appearance.primaryColor,
                         ),
                       ),
@@ -1742,29 +2255,31 @@ class _WorkerCardState extends State<_WorkerCard> {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            // Location
+            const SizedBox(height: 10),
+            // Location, Rating and Rates in one compact row
             Row(
               children: [
-                Icon(Icons.location_on, size: 14, color: Colors.grey[600]),
-                const SizedBox(width: 4),
                 Expanded(
-                  child: Text(
-                    widget.worker['location'] as String,
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  child: Row(
+                    children: [
+                      Icon(Icons.location_on, size: 13, color: Colors.grey[600]),
+                      const SizedBox(width: 3),
+                      Expanded(
+                        child: Text(
+                          widget.worker['location'] as String,
+                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            
-            // Rating
-            Row(
-              children: [
-                Icon(Icons.star, color: Colors.amber, size: 16),
-                const SizedBox(width: 4),
+                const SizedBox(width: 8),
+                Icon(Icons.star, color: Colors.amber, size: 14),
+                const SizedBox(width: 2),
                 Text(
-                  '${widget.worker['rating']} (${widget.worker['reviewCount']} reviews)',
+                  '${widget.worker['rating']}',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -1773,65 +2288,84 @@ class _WorkerCardState extends State<_WorkerCard> {
                         : Colors.grey[800],
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            
-            // Daily Rate (Prominent)
-            Row(
-              children: [
+                const SizedBox(width: 2),
                 Text(
-                  '₹${widget.worker['dailyRate']}/day',
+                  '(${widget.worker['reviewCount']})',
                   style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: widget.appearance.primaryColor,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  '₹${widget.worker['halfDayRate']}/half',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 11,
                     color: widget.appearance.brightness == Brightness.dark
                         ? Colors.grey[400]
-                        : Colors.grey[700],
+                        : Colors.grey[600],
                   ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            
+            // Rates on second line
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '₹${widget.worker['dailyRate']}/day',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: widget.appearance.primaryColor,
+                      ),
+                    ),
+                    Text(
+                      '₹${widget.worker['halfDayRate']}/half',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: widget.appearance.brightness == Brightness.dark
+                            ? Colors.grey[400]
+                            : Colors.grey[700],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
             const SizedBox(height: 8),
             
-            // Skills
-            Text(
-              widget.worker['skills'] as String,
-              style: TextStyle(
-                fontSize: 12,
-                color: widget.appearance.brightness == Brightness.dark
-                    ? Colors.grey[400]
-                    : Colors.grey[600],
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 8),
-            
-            // Availability
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.green.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                widget.worker['availability'] as String,
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.green,
+            // Skills and Availability in one row
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.worker['skills'] as String,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: widget.appearance.brightness == Brightness.dark
+                          ? Colors.grey[400]
+                          : Colors.grey[600],
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-              ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                  child: Text(
+                    widget.worker['availability'] as String,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.green,
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 12),
             // Divider
@@ -1850,18 +2384,52 @@ class _WorkerCardState extends State<_WorkerCard> {
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   InkWell(
-                    onTap: () {},
+                    onTap: isPlayingAudio ? _stopAudio : _speakWorkerInfo,
                     borderRadius: BorderRadius.circular(8),
-                    splashColor: Colors.blue.withValues(alpha: 0.3),
+                    splashColor: Colors.purple.withValues(alpha: 0.3),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.thumb_up_outlined, size: 18, color: Colors.grey),
+                          Icon(
+                            isPlayingAudio ? Icons.stop_circle : Icons.mic,
+                            size: 18,
+                            color: isPlayingAudio ? Colors.red : Colors.purple,
+                          ),
                           const SizedBox(width: 3),
                           Text(
-                            '0',
+                            isPlayingAudio ? 'Stop' : 'Listen',
+                            style: TextStyle(
+                              fontSize: 9,
+                              color: isPlayingAudio ? Colors.red : Colors.grey[700],
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Translating worker profile...'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    splashColor: Colors.green.withValues(alpha: 0.3),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.translate, size: 18, color: Colors.green),
+                          const SizedBox(width: 3),
+                          Text(
+                            'Translate',
                             style: TextStyle(fontSize: 9, color: Colors.grey[700]),
                           ),
                         ],
@@ -1869,7 +2437,9 @@ class _WorkerCardState extends State<_WorkerCard> {
                     ),
                   ),
                   InkWell(
-                    onTap: () {},
+                    onTap: () {
+                      _showCommentDialog();
+                    },
                     borderRadius: BorderRadius.circular(8),
                     splashColor: widget.appearance.primaryColor.withValues(alpha: 0.3),
                     child: Padding(
@@ -1878,26 +2448,16 @@ class _WorkerCardState extends State<_WorkerCard> {
                     ),
                   ),
                   InkWell(
-                    onTap: () {},
-                    borderRadius: BorderRadius.circular(8),
-                    splashColor: widget.appearance.primaryColor.withValues(alpha: 0.3),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.share_outlined, size: 18, color: widget.appearance.primaryColor),
-                          const SizedBox(width: 3),
-                          Text(
-                            'Share',
-                            style: TextStyle(fontSize: 9, color: Colors.grey[700]),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ChatScreen(
+                            userName: widget.worker['name'] ?? 'Worker',
                           ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  InkWell(
-                    onTap: () {},
+                        ),
+                      );
+                    },
                     borderRadius: BorderRadius.circular(8),
                     splashColor: widget.appearance.primaryColor.withValues(alpha: 0.3),
                     child: Padding(
@@ -1905,10 +2465,10 @@ class _WorkerCardState extends State<_WorkerCard> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.chat_bubble_outline, size: 18, color: widget.appearance.primaryColor),
+                          Icon(Icons.phone, size: 18, color: widget.appearance.primaryColor),
                           const SizedBox(width: 3),
                           Text(
-                            'Chat',
+                            'Call',
                             style: TextStyle(fontSize: 9, color: Colors.grey[700]),
                           ),
                         ],
@@ -2164,58 +2724,43 @@ class _SwipeableJobCardState extends State<_SwipeableJobCard> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    // Chat Button
-                    Column(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: widget.appearance.primaryColor.withValues(alpha: 0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.chat_outlined,
-                            color: widget.appearance.primaryColor,
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Chat',
-                          style: widget.appearance.getSmallStyle().copyWith(
-                            color: widget.appearance.brightness == Brightness.dark
-                                ? Colors.grey[400]
-                                : Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
-                    
                     // Call Button
-                    Column(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: widget.appearance.primaryColor.withValues(alpha: 0.1),
-                            shape: BoxShape.circle,
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ChatScreen(
+                              userName: widget.company,
+                            ),
                           ),
-                          child: Icon(
-                            Icons.call_outlined,
-                            color: widget.appearance.primaryColor,
-                            size: 20,
+                        );
+                      },
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: widget.appearance.primaryColor.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.phone,
+                              color: widget.appearance.primaryColor,
+                              size: 20,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'call',
-                          style: widget.appearance.getSmallStyle().copyWith(
-                            color: widget.appearance.brightness == Brightness.dark
-                                ? Colors.grey[400]
-                                : Colors.grey,
+                          const SizedBox(height: 4),
+                          Text(
+                            'Call',
+                            style: widget.appearance.getSmallStyle().copyWith(
+                              color: widget.appearance.brightness == Brightness.dark
+                                  ? Colors.grey[400]
+                                  : Colors.grey,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                     
                     // Apply Button

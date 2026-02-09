@@ -560,32 +560,4 @@ Widget _buildJobsForCategory(Map<String, dynamic> category) {
     ],
   );
 }
-
-// Helper method to build action buttons
-Widget _buildActionButton(IconData icon, String label, VoidCallback onPressed) {
-  return GestureDetector(
-    onTap: onPressed,
-    child: Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.teal.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: Colors.teal, size: 10),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Colors.teal,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    ),
-  );
-}
 }

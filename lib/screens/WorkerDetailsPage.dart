@@ -1,12 +1,120 @@
 import 'package:flutter/material.dart';
 import 'package:naka/config/app_colors.dart';
 import 'package:naka/providers/AppearanceProvider.dart';
+import 'package:naka/screens/ChatScreen.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:translator/translator.dart';
 
-class WorkerDetailsPage extends StatelessWidget {
+class WorkerDetailsPage extends StatefulWidget {
   final Map<String, dynamic> worker;
 
   const WorkerDetailsPage({super.key, required this.worker});
+
+  @override
+  State<WorkerDetailsPage> createState() => _WorkerDetailsPageState();
+}
+
+class _WorkerDetailsPageState extends State<WorkerDetailsPage> {
+  final FlutterTts flutterTts = FlutterTts();
+  bool isPlayingAudio = false;
+  bool isTranslated = false;
+  bool isTranslating = false;
+  late Map<String, String> translatedWorker;
+  final GoogleTranslator translator = GoogleTranslator();
+
+  @override
+  void initState() {
+    super.initState();
+    _initTts();
+    translatedWorker = {};
+  }
+
+  Future<void> _initTts() async {
+    await flutterTts.setLanguage('en-IN');
+    await flutterTts.setSpeechRate(0.85);
+  }
+
+  Future<void> _speakWorkerInfo() async {
+    String text = '''
+    Worker Name: ${widget.worker['name'] ?? 'Unknown'}.
+    Type: ${widget.worker['type'] ?? 'Worker'}.
+    Daily Rate: ${widget.worker['dailyRate'] ?? '0'} rupees per day.
+    Half day Rate: ${widget.worker['halfDayRate'] ?? '0'} rupees for half day.
+    Skills: ${widget.worker['skills'] ?? 'Not specified'}.
+    Location: ${widget.worker['location'] ?? 'Not specified'}.
+    Rating: ${widget.worker['rating'] ?? '0'} stars.
+    ''';
+
+    setState(() {
+      isPlayingAudio = true;
+    });
+
+    await flutterTts.speak(text);
+    
+    flutterTts.setCompletionHandler(() {
+      setState(() {
+        isPlayingAudio = false;
+      });
+    });
+  }
+
+  Future<void> _stopAudio() async {
+    await flutterTts.stop();
+    setState(() {
+      isPlayingAudio = false;
+    });
+  }
+
+  Future<void> _toggleTranslation() async {
+    if (isTranslated) {
+      setState(() {
+        isTranslated = false;
+      });
+    } else {
+      setState(() {
+        isTranslating = true;
+      });
+
+      try {
+        String name = widget.worker['name'] ?? '';
+        String type = widget.worker['type'] ?? '';
+        String skills = widget.worker['skills'] ?? '';
+        String location = widget.worker['location'] ?? '';
+
+        var translatedName = await translator.translate(name, from: 'en', to: 'hi');
+        var translatedType = await translator.translate(type, from: 'en', to: 'hi');
+        var translatedSkills = await translator.translate(skills, from: 'en', to: 'hi');
+        var translatedLocation = await translator.translate(location, from: 'en', to: 'hi');
+
+        setState(() {
+          translatedWorker = {
+            'name': translatedName.toString(),
+            'type': translatedType.toString(),
+            'skills': translatedSkills.toString(),
+            'location': translatedLocation.toString(),
+          };
+          isTranslated = true;
+          isTranslating = false;
+        });
+      } catch (e) {
+        setState(() {
+          isTranslating = false;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Translation error: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    flutterTts.stop();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,19 +164,23 @@ class WorkerDetailsPage extends StatelessWidget {
                         radius: 36,
                         backgroundColor: Colors.grey,
                         backgroundImage: NetworkImage(
-                          worker['image'] ?? 'https://randomuser.me/api/portraits/men/32.jpg',
+                          widget.worker['image'] ?? 'https://randomuser.me/api/portraits/men/32.jpg',
                         ),
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        worker['name'] ?? 'Unknown Worker',
+                        isTranslated && translatedWorker.isNotEmpty
+                            ? translatedWorker['name'] ?? (widget.worker['name'] ?? 'Unknown Worker')
+                            : (widget.worker['name'] ?? 'Unknown Worker'),
                         style: appearance.getTitleStyle().copyWith(
                           color: appearance.primaryColor,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        worker['type'] ?? 'Carpenter',
+                        isTranslated && translatedWorker.isNotEmpty
+                            ? translatedWorker['type'] ?? (widget.worker['type'] ?? 'Carpenter')
+                            : (widget.worker['type'] ?? 'Carpenter'),
                         style: appearance.getBodyStyle().copyWith(
                           color: appearance.brightness == Brightness.dark
                               ? Colors.grey[400]
@@ -82,7 +194,7 @@ class WorkerDetailsPage extends StatelessWidget {
                           Icon(Icons.star, color: Colors.amber, size: 16),
                           const SizedBox(width: 4),
                           Text(
-                            '${worker['rating'] ?? '4.5'} (${worker['reviews'] ?? '120'} reviews)',
+                            '${widget.worker['rating'] ?? '4.5'} (${widget.worker['reviews'] ?? '120'} reviews)',
                             style: appearance.getSmallStyle().copyWith(
                               color: appearance.brightness == Brightness.dark
                                   ? Colors.grey[300]
@@ -96,12 +208,83 @@ class WorkerDetailsPage extends StatelessWidget {
 
                   const SizedBox(height: 16),
 
+                  /// TTS and Translation Buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      /// Listen Button
+                      InkWell(
+                        onTap: isPlayingAudio ? _stopAudio : _speakWorkerInfo,
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                isPlayingAudio ? Icons.stop_circle : Icons.mic,
+                                size: 20,
+                                color: isPlayingAudio ? Colors.red : Colors.purple,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                isPlayingAudio ? 'Stop' : 'Listen',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isPlayingAudio ? Colors.red : Colors.purple,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      /// Translate Button
+                      InkWell(
+                        onTap: _toggleTranslation,
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.translate,
+                                size: 20,
+                                color: isTranslated ? Colors.green[700] : Colors.green,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                isTranslating ? 'Translating...' : (isTranslated ? 'English' : 'हिंदी'),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.green,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+
                   /// Action Buttons (Call, SMS, Hire)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       _buildActionButton(Icons.phone, 'Call', () {
-                        // Add call functionality
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ChatScreen(
+                              userName: widget.worker['name'] ?? 'Worker',
+                            ),
+                          ),
+                        );
                       }, appearance),
                       _buildActionButton(Icons.sms, 'Message', () {
                         // Add message functionality
@@ -130,7 +313,7 @@ class WorkerDetailsPage extends StatelessWidget {
                     ],
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
 
                   /// Location Map Placeholder
                   Container(
@@ -192,7 +375,9 @@ class WorkerDetailsPage extends StatelessWidget {
                           Icon(Icons.location_on, size: 18, color: appearance.primaryColor),
                           const SizedBox(width: 6),
                           Text(
-                            worker['location'] ?? 'Mumbai, India',
+                            isTranslated && translatedWorker.isNotEmpty
+                                ? translatedWorker['location'] ?? (widget.worker['location'] ?? 'Mumbai, India')
+                                : (widget.worker['location'] ?? 'Mumbai, India'),
                             style: appearance.getBodyStyle().copyWith(
                               color: appearance.brightness == Brightness.dark
                                   ? Colors.white
@@ -207,7 +392,7 @@ class WorkerDetailsPage extends StatelessWidget {
                           Icon(Icons.attach_money, size: 18, color: appearance.primaryColor),
                           const SizedBox(width: 6),
                           Text(
-                            '₹${worker['hourlyRate'] ?? '500'}/hour',
+                            '₹${widget.worker['hourlyRate'] ?? '500'}/hour',
                             style: appearance.getBodyStyle().copyWith(
                               color: appearance.brightness == Brightness.dark
                                   ? Colors.white
@@ -222,7 +407,7 @@ class WorkerDetailsPage extends StatelessWidget {
                           Icon(Icons.verified_user, size: 18, color: Colors.green),
                           const SizedBox(width: 6),
                           Text(
-                            '${worker['experience'] ?? '5'} years experience',
+                            '${widget.worker['experience'] ?? '5'} years experience',
                             style: appearance.getBodyStyle().copyWith(
                               color: appearance.brightness == Brightness.dark
                                   ? Colors.white
@@ -237,7 +422,7 @@ class WorkerDetailsPage extends StatelessWidget {
                           Icon(Icons.work, size: 18, color: appearance.primaryColor),
                           const SizedBox(width: 6),
                           Text(
-                            '${worker['jobsCompleted'] ?? '45'} jobs completed',
+                            '${widget.worker['jobsCompleted'] ?? '45'} jobs completed',
                             style: appearance.getBodyStyle().copyWith(
                               color: appearance.brightness == Brightness.dark
                                   ? Colors.white
@@ -268,10 +453,14 @@ class WorkerDetailsPage extends StatelessWidget {
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: (worker['skills'] is List<String> 
-                        ? worker['skills'] as List<String>
-                        : (worker['skills'] as String?)?.split(',').map((s) => s.trim()).toList() ?? ['Carpentry', 'Repairs', 'Installation']
+                    children: (widget.worker['skills'] is List<String> 
+                        ? widget.worker['skills'] as List<String>
+                        : (widget.worker['skills'] as String?)?.split(',').map((s) => s.trim()).toList() ?? ['Carpentry', 'Repairs', 'Installation']
                     ).map((skill) {
+                      String displaySkill = skill;
+                      if (isTranslated && translatedWorker.containsKey('skills')) {
+                        displaySkill = translatedWorker['skills'] ?? skill;
+                      }
                       return Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
@@ -282,7 +471,7 @@ class WorkerDetailsPage extends StatelessWidget {
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          skill,
+                          displaySkill,
                           style: appearance.getSmallStyle().copyWith(
                             color: appearance.primaryColor,
                             fontWeight: FontWeight.w500,
@@ -309,7 +498,7 @@ class WorkerDetailsPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    worker['about'] ?? 'Experienced worker with a proven track record of delivering high-quality work. '
+                    widget.worker['about'] ?? 'Experienced worker with a proven track record of delivering high-quality work. '
                         'Dedicated to customer satisfaction and attention to detail.',
                     style: appearance.getBodyStyle().copyWith(
                       color: appearance.brightness == Brightness.dark

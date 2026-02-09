@@ -1,12 +1,121 @@
 import 'package:flutter/material.dart';
 import 'package:naka/config/app_colors.dart';
 import 'package:naka/providers/AppearanceProvider.dart';
+import 'package:naka/screens/ChatScreen.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:translator/translator.dart';
 
-class JobDetailsPage extends StatelessWidget {
+class JobDetailsPage extends StatefulWidget {
   final Map<String, dynamic> job;
 
   const JobDetailsPage({super.key, required this.job});
+
+  @override
+  State<JobDetailsPage> createState() => _JobDetailsPageState();
+}
+
+class _JobDetailsPageState extends State<JobDetailsPage> {
+  final FlutterTts flutterTts = FlutterTts();
+  bool isPlayingAudio = false;
+  bool isTranslated = false;
+  bool isTranslating = false;
+  late Map<String, String> translatedJob;
+  final GoogleTranslator translator = GoogleTranslator();
+
+  @override
+  void initState() {
+    super.initState();
+    _initTts();
+    translatedJob = {};
+  }
+
+  Future<void> _initTts() async {
+    await flutterTts.setLanguage('en-IN');
+    await flutterTts.setSpeechRate(0.85);
+  }
+
+  Future<void> _speakJobInfo() async {
+    String text = '''
+    Job Title: ${widget.job['title'] ?? 'Not specified'}.
+    Company: ${widget.job['company'] ?? 'Not specified'}.
+    Location: ${widget.job['location'] ?? 'Not specified'}.
+    Salary: ${widget.job['salary'] ?? 'Not specified'}.
+    Description: ${widget.job['description'] ?? 'No description provided'}.
+    ''';
+
+    setState(() {
+      isPlayingAudio = true;
+    });
+
+    await flutterTts.speak(text);
+    
+    flutterTts.setCompletionHandler(() {
+      setState(() {
+        isPlayingAudio = false;
+      });
+    });
+  }
+
+  Future<void> _stopAudio() async {
+    await flutterTts.stop();
+    setState(() {
+      isPlayingAudio = false;
+    });
+  }
+
+  Future<void> _toggleTranslation() async {
+    if (isTranslated) {
+      setState(() {
+        isTranslated = false;
+      });
+    } else {
+      setState(() {
+        isTranslating = true;
+      });
+
+      try {
+        String title = widget.job['title'] ?? '';
+        String company = widget.job['company'] ?? '';
+        String location = widget.job['location'] ?? '';
+        String salary = widget.job['salary'] ?? '';
+        String description = widget.job['description'] ?? '';
+
+        var translatedTitle = await translator.translate(title, from: 'en', to: 'hi');
+        var translatedCompany = await translator.translate(company, from: 'en', to: 'hi');
+        var translatedLocation = await translator.translate(location, from: 'en', to: 'hi');
+        var translatedSalary = await translator.translate(salary, from: 'en', to: 'hi');
+        var translatedDescription = await translator.translate(description, from: 'en', to: 'hi');
+
+        setState(() {
+          translatedJob = {
+            'title': translatedTitle.toString(),
+            'company': translatedCompany.toString(),
+            'location': translatedLocation.toString(),
+            'salary': translatedSalary.toString(),
+            'description': translatedDescription.toString(),
+          };
+          isTranslated = true;
+          isTranslating = false;
+        });
+      } catch (e) {
+        setState(() {
+          isTranslating = false;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Translation error: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    flutterTts.stop();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,14 +168,18 @@ class JobDetailsPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        job['title'],
+                        isTranslated && translatedJob.isNotEmpty
+                            ? translatedJob['title'] ?? widget.job['title']
+                            : widget.job['title'],
                         style: appearance.getTitleStyle().copyWith(
                           color: appearance.primaryColor,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        job['company'],
+                        isTranslated && translatedJob.isNotEmpty
+                            ? translatedJob['company'] ?? widget.job['company']
+                            : widget.job['company'],
                         style: appearance.getBodyStyle().copyWith(
                           color: appearance.brightness == Brightness.dark
                               ? Colors.grey[400]
@@ -78,12 +191,83 @@ class JobDetailsPage extends StatelessWidget {
 
                   const SizedBox(height: 16),
 
+                  /// TTS and Translation Buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      /// Listen Button
+                      InkWell(
+                        onTap: isPlayingAudio ? _stopAudio : _speakJobInfo,
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                isPlayingAudio ? Icons.stop_circle : Icons.mic,
+                                size: 20,
+                                color: isPlayingAudio ? Colors.red : Colors.purple,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                isPlayingAudio ? 'Stop' : 'Listen',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isPlayingAudio ? Colors.red : Colors.purple,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      /// Translate Button
+                      InkWell(
+                        onTap: _toggleTranslation,
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.translate,
+                                size: 20,
+                                color: isTranslated ? Colors.green[700] : Colors.green,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                isTranslating ? 'Translating...' : (isTranslated ? 'English' : 'हिंदी'),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.green,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+
                   /// Action Buttons (Call, SMS, Apply)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       _buildActionButton(Icons.phone, 'Call', () {
-                        // Add call functionality
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ChatScreen(
+                              userName: widget.job['company'] ?? 'Contractor',
+                            ),
+                          ),
+                        );
                       }, appearance),
                       _buildActionButton(Icons.sms, 'SMS', () {
                         // Add SMS functionality
@@ -174,7 +358,9 @@ class JobDetailsPage extends StatelessWidget {
                           Icon(Icons.location_on, size: 18, color: appearance.primaryColor),
                           const SizedBox(width: 6),
                           Text(
-                            job['location'],
+                            isTranslated && translatedJob.isNotEmpty
+                                ? translatedJob['location'] ?? widget.job['location']
+                                : widget.job['location'],
                             style: appearance.getBodyStyle().copyWith(
                               color: appearance.brightness == Brightness.dark
                                   ? Colors.white
@@ -189,7 +375,9 @@ class JobDetailsPage extends StatelessWidget {
                           Icon(Icons.attach_money, size: 18, color: appearance.primaryColor),
                           const SizedBox(width: 6),
                           Text(
-                            job['salary'],
+                            isTranslated && translatedJob.isNotEmpty
+                                ? translatedJob['salary'] ?? widget.job['salary']
+                                : widget.job['salary'],
                             style: appearance.getBodyStyle().copyWith(
                               color: appearance.brightness == Brightness.dark
                                   ? Colors.white
@@ -199,7 +387,7 @@ class JobDetailsPage extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      if (job['isRemote'] == true)
+                      if (widget.job['isRemote'] == true)
                         Row(
                           children: [
                             Icon(Icons.wifi, size: 18, color: appearance.primaryColor),
@@ -234,9 +422,9 @@ class JobDetailsPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'This is a sample job description for demonstration purposes. '
-                    'Include key responsibilities, required skills, and any other '
-                    'important info here. You can replace this with actual data later.',
+                    isTranslated && translatedJob.isNotEmpty
+                        ? translatedJob['description'] ?? (widget.job['description'] ?? 'Sample job description')
+                        : (widget.job['description'] ?? 'Sample job description'),
                     style: appearance.getBodyStyle().copyWith(
                       color: appearance.brightness == Brightness.dark
                           ? Colors.grey[300]

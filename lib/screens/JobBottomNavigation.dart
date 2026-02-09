@@ -3,7 +3,8 @@ import 'package:naka/gen_l10n/app_localizations.dart';
 import 'package:naka/screens/JobHomeScreen.dart';
 import 'package:naka/screens/NotificationScreen.dart';
 import 'package:naka/screens/PostJobPage.dart';
-import 'package:naka/screens/ProfileScreen.dart';
+import 'package:naka/screens/AccountScreen.dart';
+import 'package:naka/screens/InsightsScreen.dart';
 import 'package:naka/providers/AppearanceProvider.dart';
 import 'package:provider/provider.dart';
 
@@ -43,11 +44,13 @@ class _JobBottomNavigationWrapperState extends State<JobBottomNavigationWrapper>
       case 0:
         return JobHomeScreen();
       case 1:
-        return PostJobPage();
+        return InsightsScreen();
       case 2:
-        return NotificationScreen();
+        return PostJobPage();
       case 3:
-        return ProfileScreen();
+        return NotificationScreen();
+      case 4:
+        return AccountScreen();
       default:
         return JobHomeScreen();
     }
@@ -104,27 +107,33 @@ class JobBottomNavigation extends StatelessWidget {
           items: [
             BottomNavigationBarItem(
               icon: Icon(
-                currentIndex == 0 ? Icons.home : Icons.home_outlined,
+                currentIndex == 0 ? Icons.work : Icons.work_outline,
               ),
-              label: loc.home,
+              label: 'Job',
             ),
             BottomNavigationBarItem(
               icon: Icon(
-                currentIndex == 1 ? Icons.add_box : Icons.add_box_outlined,
+                currentIndex == 1 ? Icons.analytics : Icons.analytics_outlined,
+              ),
+              label: 'Insights',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(
+                currentIndex == 2 ? Icons.add_box : Icons.add_box_outlined,
               ),
               label: loc.postJob,
             ),
             BottomNavigationBarItem(
               icon: Icon(
-                currentIndex == 2 ? Icons.mail : Icons.mail_outline,
+                currentIndex == 3 ? Icons.notifications : Icons.notifications_outlined,
               ),
-              label: 'Messages',
+              label: 'Notifications',
             ),
             BottomNavigationBarItem(
               icon: Icon(
-                currentIndex == 3 ? Icons.person : Icons.person_outline,
+                currentIndex == 4 ? Icons.account_circle : Icons.account_circle_outlined,
               ),
-              label: loc.profile,
+              label: 'Account',
             ),
           ],
           onTap: onTap,

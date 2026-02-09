@@ -12,12 +12,13 @@ class SettingsScreen extends StatelessWidget {
         return Scaffold(
           backgroundColor: appearance.brightness == Brightness.dark
               ? const Color(0xFF1E1E1E)
-              : Colors.white,
+              : const Color(0xFFF8F9FA),
           appBar: AppBar(
             backgroundColor: appearance.brightness == Brightness.dark
                 ? const Color(0xFF2A2A2A)
                 : Colors.white,
             elevation: 0,
+            centerTitle: true,
             title: Text(
               'Settings',
               style: TextStyle(
@@ -40,195 +41,131 @@ class SettingsScreen extends StatelessWidget {
           body: ListView(
             padding: const EdgeInsets.all(16.0),
             children: [
-              Text(
-                'Settings',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: appearance.brightness == Brightness.dark ? Colors.white : Colors.black,
+              _buildHeaderCard(appearance),
+              const SizedBox(height: 16),
+              _buildSectionTitle('Appearance', appearance),
+              const SizedBox(height: 10),
+              _buildCard(
+                appearance: appearance,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionHeader('Theme', appearance),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _themeButton(context, 'Light', Icons.light_mode, appearance),
+                        _themeButton(context, 'Dark', Icons.dark_mode, appearance),
+                        _themeButton(context, 'System', Icons.settings_suggest, appearance),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    _buildSectionHeader('Font Size', appearance),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _fontSizeButton(context, 'Small', 12, appearance),
+                        _fontSizeButton(context, 'Medium', 14, appearance),
+                        _fontSizeButton(context, 'Large', 18, appearance),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    _buildSectionHeader('Primary Color', appearance),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _colorButton(context, 'Default', const Color(0xFF17A2B8), appearance),
+                        _colorButton(context, 'Teal', const Color(0xFF00D4AA), appearance),
+                        _colorButton(context, 'Blue', const Color(0xFF0084FF), appearance),
+                        _colorButton(context, 'Purple', const Color(0xFF9C27B0), appearance),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _colorButton(context, 'Green', const Color(0xFF4CAF50), appearance),
+                        _colorButton(context, 'Orange', const Color(0xFFFF9800), appearance),
+                        _colorButton(context, 'Pink', const Color(0xFFE91E63), appearance),
+                        _colorButton(context, 'Red', const Color(0xFFF44336), appearance),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _colorButton(context, 'Indigo', const Color(0xFF3F51B5), appearance),
+                        const SizedBox(width: 48),
+                        const SizedBox(width: 48),
+                        const SizedBox(width: 48),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 24),
-              
-              // APPEARANCE SECTION
-              Text(
-                'Appearance',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey,
+              const SizedBox(height: 20),
+              _buildSectionTitle('Account', appearance),
+              const SizedBox(height: 10),
+              _buildCard(
+                appearance: appearance,
+                child: Column(
+                  children: [
+                    _buildSettingTile(
+                      title: 'Profile',
+                      icon: Icons.account_circle,
+                      appearance: appearance,
+                      onTap: () {},
+                    ),
+                    _buildDivider(appearance),
+                    _buildSettingTile(
+                      title: 'Notifications',
+                      icon: Icons.notifications,
+                      appearance: appearance,
+                      onTap: () {},
+                    ),
+                    _buildDivider(appearance),
+                    _buildSettingTile(
+                      title: 'Privacy',
+                      icon: Icons.lock_outline,
+                      appearance: appearance,
+                      onTap: () {},
+                    ),
+                    _buildDivider(appearance),
+                    _buildSettingTile(
+                      title: 'Security',
+                      icon: Icons.security,
+                      appearance: appearance,
+                      onTap: () {},
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 12),
-            
-            // Theme Selection
-            Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey[300]!),
-                borderRadius: BorderRadius.circular(8),
+              const SizedBox(height: 20),
+              _buildSectionTitle('Support', appearance),
+              const SizedBox(height: 10),
+              _buildCard(
+                appearance: appearance,
+                child: Column(
+                  children: [
+                    _buildSettingTile(
+                      title: 'Help Center',
+                      icon: Icons.help_outline,
+                      appearance: appearance,
+                      onTap: () {},
+                    ),
+                    _buildDivider(appearance),
+                    _buildSettingTile(
+                      title: 'About App',
+                      icon: Icons.info_outline,
+                      appearance: appearance,
+                      onTap: () {},
+                    ),
+                  ],
+                ),
               ),
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Theme',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _themeButton(context, 'Light', Icons.light_mode, appearance),
-                      _themeButton(context, 'Dark', Icons.dark_mode, appearance),
-                      _themeButton(context, 'System', Icons.settings_suggest, appearance),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            
-            // Font Size Selection
-            Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey[300]!),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Font Size',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _fontSizeButton(context, 'Small', 12, appearance),
-                      _fontSizeButton(context, 'Medium', 14, appearance),
-                      _fontSizeButton(context, 'Large', 18, appearance),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            
-            // Primary Color Selection
-            Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey[300]!),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Primary Color',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _colorButton(context, 'Default', const Color(0xFF17A2B8), appearance),
-                      _colorButton(context, 'Teal', const Color(0xFF00D4AA), appearance),
-                      _colorButton(context, 'Blue', const Color(0xFF0084FF), appearance),
-                      _colorButton(context, 'Purple', const Color(0xFF9C27B0), appearance),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _colorButton(context, 'Green', const Color(0xFF4CAF50), appearance),
-                      _colorButton(context, 'Orange', const Color(0xFFFF9800), appearance),
-                      _colorButton(context, 'Pink', const Color(0xFFE91E63), appearance),
-                      _colorButton(context, 'Red', const Color(0xFFF44336), appearance),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _colorButton(context, 'Indigo', const Color(0xFF3F51B5), appearance),
-                      const SizedBox(width: 48),
-                      const SizedBox(width: 48),
-                      const SizedBox(width: 48),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            
-            // OTHER SECTIONS
-            Text(
-              'Account',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Material(
-              child: Column(
-                children: [
-                  ListTile(
-                    title: const Text('Profile'),
-                    trailing: const Icon(Icons.arrow_forward),
-                    onTap: () {},
-                  ),
-                  ListTile(
-                    title: const Text('Notifications'),
-                    trailing: const Icon(Icons.arrow_forward),
-                    onTap: () {},
-                  ),
-                  ListTile(
-                    title: const Text('Privacy'),
-                    trailing: const Icon(Icons.arrow_forward),
-                    onTap: () {},
-                  ),
-                  ListTile(
-                    title: const Text('Security'),
-                    trailing: const Icon(Icons.arrow_forward),
-                    onTap: () {},
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            
-            Text(
-              'Other',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Material(
-              child: Column(
-                children: [
-                  ListTile(
-                    title: const Text('Help Center'),
-                    trailing: const Icon(Icons.arrow_forward),
-                    onTap: () {},
-                  ),
-                  ListTile(
-                    title: const Text('About App'),
-                    trailing: const Icon(Icons.arrow_forward),
-                    onTap: () {},
-                  ),
-                ],
-              ),
-            ),
             ],
           ),
         );
@@ -267,6 +204,166 @@ class SettingsScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title, AppearanceProvider appearance) {
+    return Text(
+      title,
+      style: TextStyle(
+        fontSize: 12.5,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.4,
+        color: appearance.brightness == Brightness.dark
+            ? Colors.grey[300]
+            : Colors.grey[600],
+      ),
+    );
+  }
+
+  Widget _buildHeaderCard(AppearanceProvider appearance) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: appearance.brightness == Brightness.dark
+            ? const Color(0xFF2A2A2A)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: appearance.primaryColor.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.settings,
+              color: appearance.primaryColor,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Customize your experience',
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
+                    color: appearance.brightness == Brightness.dark
+                        ? Colors.white
+                        : Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Theme, font size, colors, and account preferences.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: appearance.brightness == Brightness.dark
+                        ? Colors.grey[400]
+                        : Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, AppearanceProvider appearance) {
+    return Text(
+      title,
+      style: TextStyle(
+        fontSize: 13.5,
+        fontWeight: FontWeight.w700,
+        color: appearance.brightness == Brightness.dark
+            ? Colors.white
+            : Colors.black87,
+      ),
+    );
+  }
+
+  Widget _buildCard({required AppearanceProvider appearance, required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: appearance.brightness == Brightness.dark
+            ? const Color(0xFF2A2A2A)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  Widget _buildSettingTile({
+    required String title,
+    required IconData icon,
+    required AppearanceProvider appearance,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      leading: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: appearance.primaryColor.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: appearance.primaryColor, size: 18),
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontSize: 13.5,
+          fontWeight: FontWeight.w600,
+          color: appearance.brightness == Brightness.dark
+              ? Colors.white
+              : Colors.black87,
+        ),
+      ),
+      trailing: Icon(
+        Icons.chevron_right,
+        color: appearance.brightness == Brightness.dark
+            ? Colors.grey[500]
+            : Colors.grey[500],
+        size: 20,
+      ),
+      onTap: onTap,
+    );
+  }
+
+  Widget _buildDivider(AppearanceProvider appearance) {
+    return Divider(
+      height: 16,
+      thickness: 1,
+      color: appearance.brightness == Brightness.dark
+          ? Colors.grey[800]
+          : Colors.grey[200],
     );
   }
 
