@@ -581,9 +581,11 @@ class _ContractorJobCardState extends State<_ContractorJobCard> {
   Future<void> _checkIfFavorite() async {
     final prefs = await SharedPreferences.getInstance();
     final favorites = prefs.getStringList('favorite_jobs') ?? [];
-    setState(() {
-      isFavorite = favorites.contains(widget.job['title']);
-    });
+    if (mounted) {
+      setState(() {
+        isFavorite = favorites.contains(widget.job['title']);
+      });
+    }
   }
 
   Future<void> _toggleFavorite() async {

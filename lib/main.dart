@@ -12,9 +12,11 @@ import 'package:naka/gen_l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart' as riverpod;
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const JobSearchApp());
+  runApp(const riverpod.ProviderScope(child: JobSearchApp()));
 }
 
 

@@ -1,19 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:naka/services/AuthService.dart';
+// import 'package:naka/services/AuthService.dart'; // Removed old service
 import 'package:naka/config/app_colors.dart';
 import 'package:naka/providers/AppearanceProvider.dart';
-import 'package:provider/provider.dart';
+import 'package:provider/provider.dart'; // Keep for AppearanceProvider
+import 'package:flutter_riverpod/flutter_riverpod.dart' as riverpod; // Alias Riverpod
 import 'package:sms_autofill/sms_autofill.dart';
+import 'package:naka/features/auth/presentation/providers/auth_provider.dart'; // Import new provider
+import 'package:shared_preferences/shared_preferences.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends riverpod.ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  _LoginScreenState createState() => _LoginScreenState();
+  riverpod.ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends riverpod.ConsumerState<LoginScreen> {
   bool isOtpScreen = false;
   final TextEditingController _phoneController = TextEditingController();
   final List<TextEditingController> _otpControllers = List.generate(
@@ -21,13 +24,21 @@ class _LoginScreenState extends State<LoginScreen> {
     (_) => TextEditingController(),
   );
   final List<FocusNode> _otpFocusNodes = List.generate(6, (_) => FocusNode());
-  final AuthService _authService = AuthService();
 
   @override
   void initState() {
     super.initState();
+    _checkIfAlreadyLoggedIn();
     // Auto-read phone number from device
     _getPhoneNumberHint();
+  }
+
+  Future<void> _checkIfAlreadyLoggedIn() async {
+    final prefs = await SharedPreferences.getInstance(); // Import shared_preferences if needed
+    final isLoggedIn = prefs.getBool('is_logged_in') ?? false;
+    if (isLoggedIn && mounted) {
+      Navigator.pushReplacementNamed(context, '/home');
+    }
   }
 
   /// Fetches phone number hint from device SIM card
@@ -64,6 +75,24 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  void _listenToAuthStates() {
+    ref.listen<AuthState>(authProvider, (previous, next) {
+      if (next is AuthLoading) {
+        // You might want to show a loading dialog here or handle it in build
+      } else if (next is AuthError) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(next.message)),
+        );
+      } else if (next is AuthAuthenticated) {
+        Navigator.pushReplacementNamed(context, '/home'); // OR /profile based on logic
+      } else if (next is AuthCodeSent) {
+        setState(() {
+          isOtpScreen = true;
+        });
+      }
+    });
+  }
+
   void _sendOtp() async {
     String phone = _phoneController.text.trim();
     if (phone.isEmpty || phone.length != 10) {
@@ -73,10 +102,8 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    await _authService.savePhoneNumber(phone);
-    setState(() {
-      isOtpScreen = true;
-    });
+    // Call Riverpod Provider
+    await ref.read(authProvider.notifier).sendOtp(phone);
   }
 
   void _verifyOtp() async {
@@ -87,20 +114,17 @@ class _LoginScreenState extends State<LoginScreen> {
       ).showSnackBar(SnackBar(content: Text("Please enter the complete OTP")));
       return;
     }
-
-    if (otp == "123456") {
-      // ✅ Mock verification
-      await _authService.loginSuccess();
-      Navigator.pushReplacementNamed(context, '/profile');
-    } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Invalid OTP")));
-    }
+    
+    // Call Riverpod Provider
+    await ref.read(authProvider.notifier).verifyOtp(_phoneController.text.trim(), otp);
   }
 
   @override
   Widget build(BuildContext context) {
+    _listenToAuthStates();
+    final authState = ref.watch(authProvider);
+    final isLoading = authState is AuthLoading;
+
     return Consumer<AppearanceProvider>(
       builder: (context, appearance, _) {
         return Scaffold(
@@ -276,22 +300,31 @@ class _LoginScreenState extends State<LoginScreen> {
                                       ),
                                       elevation: 2,
                                     ),
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: const [
-                                        Icon(Icons.send_rounded, size: 20),
-                                        SizedBox(width: 8),
-                                        Text(
-                                          'Send Verification Code',
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w700,
-                                            color: Colors.white,
+                                    child: isLoading
+                                        ? const SizedBox(
+                                            height: 20,
+                                            width: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            ),
+                                          )
+                                        : Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: const [
+                                              Icon(Icons.send_rounded, size: 20),
+                                              SizedBox(width: 8),
+                                              Text(
+                                                'Send Verification Code',
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                        ),
-                                      ],
-                                    ),
                                   ),
                                 ),
                               ],
@@ -400,25 +433,34 @@ class _LoginScreenState extends State<LoginScreen> {
                                       ),
                                       elevation: 2,
                                     ),
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: const [
-                                        Icon(
-                                          Icons.check_circle_rounded,
-                                          size: 20,
-                                        ),
-                                        SizedBox(width: 8),
-                                        Text(
-                                          'Verify & Continue',
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w700,
-                                            color: Colors.white,
+                                    child: isLoading
+                                        ? const SizedBox(
+                                            height: 20,
+                                            width: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            ),
+                                          )
+                                        : Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: const [
+                                              Icon(
+                                                Icons.check_circle_rounded,
+                                                size: 20,
+                                              ),
+                                              SizedBox(width: 8),
+                                              Text(
+                                                'Verify & Continue',
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                        ),
-                                      ],
-                                    ),
                                   ),
                                 ),
                                 const SizedBox(height: 18),

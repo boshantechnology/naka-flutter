@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' as riverpod;
 import 'package:naka/config/app_colors.dart';
 import 'package:naka/providers/AppearanceProvider.dart';
 import 'package:naka/providers/LocaleProvider.dart';
 import 'package:naka/gen_l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:naka/features/auth/presentation/providers/auth_provider.dart';
 
-class AccountScreen extends StatefulWidget {
+class AccountScreen extends riverpod.ConsumerStatefulWidget {
   const AccountScreen({super.key});
 
   @override
-  State<AccountScreen> createState() => _AccountScreenState();
+  riverpod.ConsumerState<AccountScreen> createState() => _AccountScreenState();
 }
 
-class _AccountScreenState extends State<AccountScreen> {
+class _AccountScreenState extends riverpod.ConsumerState<AccountScreen> {
   
   @override
   void initState() {
@@ -416,24 +418,64 @@ class _AccountScreenState extends State<AccountScreen> {
   }
 
   Widget _buildLogoutButton(AppearanceProvider appearance) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.red.shade300, width: 1.2),
-        borderRadius: BorderRadius.circular(12),
-        color: appearance.brightness == Brightness.dark
-            ? const Color(0xFF2A2A2A)
-            : Colors.white,
-      ),
-      child: Center(
-        child: Text(
-          'Logout',
-          style: appearance.getSmallStyle().copyWith(
-            fontSize: 13.5,
-            fontWeight: FontWeight.bold,
-            color: Colors.red,
+    // Watch Auth State for loading indicator
+    final authState = ref.watch(authProvider);
+    final isLoggingOut = authState is AuthLoading;
+
+    return GestureDetector(
+      onTap: isLoggingOut ? null : () async {
+        // Show confirmation dialog
+        final shouldLogout = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Logout'),
+            content: const Text('Are you sure you want to logout?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Logout', style: TextStyle(color: Colors.red)),
+              ),
+            ],
           ),
+        );
+
+        if (shouldLogout == true) {
+           await ref.read(authProvider.notifier).logout();
+           if(mounted) {
+             // Navigate to Login Screen and remove all previous routes
+             Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+           }
+        }
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.red.shade300, width: 1.2),
+          borderRadius: BorderRadius.circular(12),
+          color: appearance.brightness == Brightness.dark
+              ? const Color(0xFF2A2A2A)
+              : Colors.white,
+        ),
+        child: Center(
+          child: isLoggingOut 
+            ? const SizedBox(
+                height: 20, 
+                width: 20, 
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.red),
+              )
+            : Text(
+                'Logout',
+                style: appearance.getSmallStyle().copyWith(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red,
+                ),
+              ),
         ),
       ),
     );

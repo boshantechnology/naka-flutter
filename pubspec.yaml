@@ -41,6 +41,9 @@ dependencies:
   # Added dependencies for language support
   shared_preferences: ^2.2.2 # For storing user language preference
   sms_autofill: ^2.4.0 # For reading device phone number hint
+  dio: ^5.9.1
+  flutter_secure_storage: ^10.0.0
+  pinput: ^6.0.2
 
 dev_dependencies:
   flutter_test:
